@@ -1,8 +1,10 @@
 // src/routes/_authenticated/groups/$groupId.tsx
+import { convexQuery } from '@convex-dev/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useMutation, useQuery } from 'convex/react'
 import { format } from 'date-fns'
-import { ArrowDown, ArrowLeft, ArrowUpDown, CalendarIcon, Plus, RefreshCw, Trash2 } from 'lucide-react'
+import { ArrowDown, ArrowLeft, ArrowUpDown, CalendarIcon, Plus, RefreshCw, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
 import { PlayerCard } from '@/components/player-card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -29,22 +31,20 @@ import { api } from '../../../../convex/_generated/api'
 import type { Id } from '../../../../convex/_generated/dataModel'
 
 export const Route = createFileRoute('/_authenticated/groups/$groupId')({
+  loader: async ({ context: { queryClient }, params: { groupId } }) => {
+    await Promise.all([
+      queryClient.ensureQueryData(convexQuery(api.groups.get, { id: groupId as Id<'groups'> })),
+      queryClient.ensureQueryData(convexQuery(api.players.listByGroup, { groupId: groupId as Id<'groups'> })),
+      queryClient.ensureQueryData(convexQuery(api.gameDays.listByGroup, { groupId: groupId as Id<'groups'> })),
+    ])
+  },
   component: GroupHubPage,
 })
 
 function GroupHubPage() {
   const { groupId } = Route.useParams()
-  const group = useQuery(api.groups.get, {
-    id: groupId as Id<'groups'>,
-  })
-
-  if (group === undefined) {
-    return (
-      <div className="flex-1 flex items-center justify-center">
-        <p className="text-muted-foreground">Loading...</p>
-      </div>
-    )
-  }
+  const { data: group } = useSuspenseQuery(convexQuery(api.groups.get, { id: groupId as Id<'groups'> }))
+  const [activeTab, setActiveTab] = useState('game-days')
 
   if (group === null) {
     return (
@@ -62,22 +62,22 @@ function GroupHubPage() {
             <ArrowLeft className="size-4" />
           </Button>
         </Link>
-        <h2 className="text-lg font-semibold">{group.name}</h2>
+        <h2 className="text-lg font-semibold flex-1">{group.name}</h2>
       </div>
 
-      <Tabs defaultValue="players" className="flex-1 flex flex-col">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <TabsList className="mx-4 mt-4 w-fit">
-          <TabsTrigger value="players">Players</TabsTrigger>
           <TabsTrigger value="game-days">Game Days</TabsTrigger>
+          <TabsTrigger value="players">Players</TabsTrigger>
           <TabsTrigger value="stats">Stats</TabsTrigger>
         </TabsList>
 
-        <TabsContent value="players" className="flex-1 mt-0 p-4">
-          <PlayersTab groupId={groupId as Id<'groups'>} />
+        <TabsContent value="game-days" className="flex-1 mt-0 p-4">
+          <GameDaysTab groupId={groupId as Id<'groups'>} onNavigateToPlayers={() => setActiveTab('players')} />
         </TabsContent>
 
-        <TabsContent value="game-days" className="flex-1 mt-0 p-4">
-          <GameDaysTab groupId={groupId as Id<'groups'>} />
+        <TabsContent value="players" className="flex-1 mt-0 p-4">
+          <PlayersTab groupId={groupId as Id<'groups'>} />
         </TabsContent>
 
         <TabsContent value="stats" className="flex-1 mt-0 p-4">
@@ -89,7 +89,7 @@ function GroupHubPage() {
 }
 
 function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
-  const players = useQuery(api.players.listByGroup, { groupId })
+  const { data: players } = useSuspenseQuery(convexQuery(api.players.listByGroup, { groupId }))
   const createPlayer = useMutation(api.players.create)
   const removePlayer = useMutation(api.players.remove)
   const updatePlayer = useMutation(api.players.update)
@@ -162,9 +162,7 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
 
   return (
     <div className="pb-24">
-      {players === undefined ? (
-        <p className="text-muted-foreground text-center">Loading...</p>
-      ) : players.length === 0 ? (
+      {players.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-muted-foreground">No players yet</p>
           <p className="text-muted-foreground text-sm">Add players to start tracking games</p>
@@ -208,7 +206,7 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
                 <AvatarImage src={avatarUrl} className="object-cover" />
                 <AvatarFallback className="text-4xl">?</AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="sm" onClick={loadNewAvatar}>
+              <Button variant="outline" size="sm" onClick={() => loadNewAvatar()}>
                 <RefreshCw className="size-4 mr-2" />
                 New Cat
               </Button>
@@ -236,9 +234,7 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
             <div className="flex flex-col items-center gap-4">
               <Avatar className="size-40 ring-4 ring-primary/20">
                 <AvatarImage src={avatarUrl} className="object-cover" />
-                <AvatarFallback className="text-4xl">
-                  {newName.charAt(0) || '?'}
-                </AvatarFallback>
+                <AvatarFallback className="text-4xl">{newName.charAt(0) || '?'}</AvatarFallback>
               </Avatar>
               <Button variant="outline" size="sm" onClick={() => loadNewAvatar(editingPlayer?._id)}>
                 <RefreshCw className="size-4 mr-2" />
@@ -261,9 +257,9 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
   )
 }
 
-function GameDaysTab({ groupId }: { groupId: Id<'groups'> }) {
-  const gameDays = useQuery(api.gameDays.listByGroup, { groupId })
-  const players = useQuery(api.players.listByGroup, { groupId })
+function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; onNavigateToPlayers: () => void }) {
+  const { data: gameDays } = useSuspenseQuery(convexQuery(api.gameDays.listByGroup, { groupId }))
+  const { data: players } = useSuspenseQuery(convexQuery(api.players.listByGroup, { groupId }))
   const createGameDay = useMutation(api.gameDays.create)
   const navigate = useNavigate()
 
@@ -272,6 +268,8 @@ function GameDaysTab({ groupId }: { groupId: Id<'groups'> }) {
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [selectedAttendees, setSelectedAttendees] = useState<Id<'players'>[]>([])
   const [isCreating, setIsCreating] = useState(false)
+
+  const hasEnoughPlayers = players.length >= 2
 
   function handleOpenDrawer() {
     setStep('date')
@@ -302,11 +300,26 @@ function GameDaysTab({ groupId }: { groupId: Id<'groups'> }) {
     }
   }
 
+  // Show prompt to add players first if not enough players
+  if (!hasEnoughPlayers) {
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center gap-4 py-12">
+        <Users className="size-12 text-muted-foreground" />
+        <div className="text-center">
+          <p className="text-muted-foreground">You need at least 2 players to start a game day</p>
+          <p className="text-muted-foreground text-sm mt-1">Add some players first</p>
+        </div>
+        <Button onClick={onNavigateToPlayers}>
+          <Plus className="size-4 mr-2" />
+          Add Players
+        </Button>
+      </div>
+    )
+  }
+
   return (
     <div className="pb-24">
-      {gameDays === undefined ? (
-        <p className="text-muted-foreground text-center">Loading...</p>
-      ) : gameDays.length === 0 ? (
+      {gameDays.length === 0 ? (
         <div className="text-center py-8">
           <p className="text-muted-foreground">No game days yet</p>
           <p className="text-muted-foreground text-sm">Start a new game day to begin tracking</p>
@@ -320,7 +333,7 @@ function GameDaysTab({ groupId }: { groupId: Id<'groups'> }) {
               params={{ gameDayId: gameDay._id }}
             >
               <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
-                <CardContent className="py-3 flex items-center justify-between">
+                <CardContent className="py-0 flex items-center justify-between">
                   <div>
                     <p className="font-medium">{format(new Date(gameDay.date), 'EEEE, MMMM d')}</p>
                     <p className="text-sm text-muted-foreground">{gameDay.gameCount} games played</p>
@@ -341,7 +354,7 @@ function GameDaysTab({ groupId }: { groupId: Id<'groups'> }) {
             className="fixed bottom-6 left-1/2 -translate-x-1/2 shadow-lg"
             size="lg"
             onClick={handleOpenDrawer}
-            disabled={!players || players.length < 2}
+            disabled={players.length < 2}
           >
             <Plus className="size-5 mr-2" />
             New Game Day
@@ -483,53 +496,48 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
       ) : sortedStats.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">No games in this period</p>
       ) : (
-        <Table>
+        <Table className="table-fixed">
           <TableHeader>
             <TableRow>
-              <TableHead className="w-12">#</TableHead>
+              <TableHead className="w-8 px-2">#</TableHead>
               <TableHead>Player</TableHead>
-              <TableHead className="text-right">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-2"
-                  onClick={() => setSortBy('winPercentage')}
-                >
-                  Win%
+              <TableHead className="text-right w-14 px-1">
+                <Button variant="ghost" size="sm" className="h-8 px-1 text-primary" onClick={() => setSortBy('winPercentage')}>
+                  W%
                   {sortBy === 'winPercentage' ? (
-                    <ArrowDown className="ml-1 size-3" />
+                    <ArrowDown className="ml-0.5 size-3" />
                   ) : (
-                    <ArrowUpDown className="ml-1 size-3 opacity-50" />
+                    <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="text-right">
-                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setSortBy('wins')}>
+              <TableHead className="text-right w-12 px-1">
+                <Button variant="ghost" size="sm" className="h-8 px-1 text-primary" onClick={() => setSortBy('wins')}>
                   W
                   {sortBy === 'wins' ? (
-                    <ArrowDown className="ml-1 size-3" />
+                    <ArrowDown className="ml-0.5 size-3" />
                   ) : (
-                    <ArrowUpDown className="ml-1 size-3 opacity-50" />
+                    <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="text-right">
-                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setSortBy('losses')}>
+              <TableHead className="text-right w-12 px-1">
+                <Button variant="ghost" size="sm" className="h-8 px-1 text-primary" onClick={() => setSortBy('losses')}>
                   L
                   {sortBy === 'losses' ? (
-                    <ArrowDown className="ml-1 size-3" />
+                    <ArrowDown className="ml-0.5 size-3" />
                   ) : (
-                    <ArrowUpDown className="ml-1 size-3 opacity-50" />
+                    <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="text-right">
-                <Button variant="ghost" size="sm" className="h-8 px-2" onClick={() => setSortBy('plusMinus')}>
+              <TableHead className="text-right w-12 px-1">
+                <Button variant="ghost" size="sm" className="h-8 px-1 text-primary" onClick={() => setSortBy('plusMinus')}>
                   +/-
                   {sortBy === 'plusMinus' ? (
-                    <ArrowDown className="ml-1 size-3" />
+                    <ArrowDown className="ml-0.5 size-3" />
                   ) : (
-                    <ArrowUpDown className="ml-1 size-3 opacity-50" />
+                    <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
                   )}
                 </Button>
               </TableHead>
@@ -538,20 +546,20 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
           <TableBody>
             {sortedStats.map((stat, index) => (
               <TableRow key={stat.player._id}>
-                <TableCell className="font-medium">{index + 1}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Avatar size="sm">
+                <TableCell className="font-medium px-2 w-8">{index + 1}</TableCell>
+                <TableCell className="overflow-hidden max-w-[120px]">
+                  <div className="flex items-center gap-2 min-w-0">
+                    <Avatar size="sm" className="shrink-0">
                       <AvatarImage src={stat.player.avatarUrl} />
                       <AvatarFallback>{stat.player.name.charAt(0)}</AvatarFallback>
                     </Avatar>
-                    <span className="truncate max-w-[100px]">{stat.player.name}</span>
+                    <span className="truncate max-w-[70px]">{stat.player.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right">{stat.winPercentage.toFixed(0)}%</TableCell>
-                <TableCell className="text-right">{stat.wins}</TableCell>
-                <TableCell className="text-right">{stat.losses}</TableCell>
-                <TableCell className="text-right">
+                <TableCell className="text-right px-1">{stat.winPercentage.toFixed(0)}%</TableCell>
+                <TableCell className="text-right px-1">{stat.wins}</TableCell>
+                <TableCell className="text-right px-1">{stat.losses}</TableCell>
+                <TableCell className="text-right px-1">
                   {stat.plusMinus > 0 ? '+' : ''}
                   {stat.plusMinus}
                 </TableCell>
