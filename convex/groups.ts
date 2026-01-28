@@ -24,6 +24,7 @@ export const list = query({
         return {
           ...group,
           playerCount: players.length,
+          players: players.map((p) => ({ _id: p._id, name: p.name, avatarUrl: p.avatarUrl })),
           lastGameDay: gameDays[0]?.date ?? null,
         };
       })
