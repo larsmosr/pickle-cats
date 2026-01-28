@@ -9,6 +9,14 @@ import { isAuthenticated, login } from '@/lib/auth'
 
 export const Route = createFileRoute('/')({
   component: LoginPage,
+  head: () => ({
+    meta: [
+      { title: 'Login | Pickle Cats' },
+      { name: 'description', content: 'Sign in to Pickle Cats to track your pickleball games and statistics.' },
+      { property: 'og:title', content: 'Login | Pickle Cats' },
+      { property: 'og:description', content: 'Sign in to Pickle Cats to track your pickleball games and statistics.' },
+    ],
+  }),
   beforeLoad: async () => {
     const authenticated = await isAuthenticated()
     if (authenticated) {
