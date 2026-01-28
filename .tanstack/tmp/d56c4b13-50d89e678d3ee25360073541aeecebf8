@@ -1,0 +1,159 @@
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { useQuery } from 'convex/react'
+import { format } from 'date-fns'
+import { ArrowLeft, Download, Star } from 'lucide-react'
+import { useRef, useState } from 'react'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { downloadImage, generateSummaryImage } from '@/lib/image-generator'
+import { api } from '../../../../convex/_generated/api'
+import type { Id } from '../../../../convex/_generated/dataModel'
+
+export const Route = createFileRoute('/_authenticated/game-day/$gameDayId_/summary')({
+  component: SummaryPage,
+})
+
+function SummaryPage() {
+  const { gameDayId } = Route.useParams()
+  const summaryRef = useRef<HTMLDivElement>(null)
+  const [isDownloading, setIsDownloading] = useState(false)
+
+  const data = useQuery(api.games.getGameDayStats, {
+    gameDayId: gameDayId as Id<'gameDays'>,
+  })
+
+  async function handleDownload() {
+    if (!summaryRef.current || !data) return
+    setIsDownloading(true)
+    try {
+      const dataUrl = await generateSummaryImage(summaryRef.current)
+      const filename = `pickle-cats-${data.gameDay.date}.png`
+      downloadImage(dataUrl, filename)
+    } finally {
+      setIsDownloading(false)
+    }
+  }
+
+  if (data === undefined) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    )
+  }
+
+  if (data === null) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Summary not found</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="flex-1 flex flex-col pb-24">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+        <Link to="/groups/$groupId" params={{ groupId: data.gameDay.groupId }}>
+          <Button variant="ghost" size="icon-sm">
+            <ArrowLeft className="size-4" />
+          </Button>
+        </Link>
+        <h2 className="text-lg font-semibold">Game Day Summary</h2>
+      </div>
+
+      <div className="p-4 space-y-4">
+        {/* Downloadable Summary Card */}
+        <div ref={summaryRef} className="bg-gradient-to-br from-primary/20 to-secondary/20 rounded-2xl p-6 space-y-4">
+          {/* Header */}
+          <div className="text-center space-y-1">
+            <div className="text-3xl">🐱</div>
+            <h3 className="text-xl font-bold">PICKLE CATS</h3>
+            <p className="text-muted-foreground">{data.group?.name}</p>
+            <p className="text-sm text-muted-foreground">{format(new Date(data.gameDay.date), 'MMMM d, yyyy')}</p>
+          </div>
+
+          {/* Stats */}
+          <div className="text-center py-4 border-y border-foreground/10">
+            <p className="text-2xl font-bold">{data.totalGames} Games Played</p>
+            {data.mvp && (
+              <div className="flex items-center justify-center gap-2 mt-2">
+                <Star className="size-5 text-yellow-500 fill-yellow-500" />
+                <span className="font-medium">
+                  MVP: {data.mvp.player.name} ({data.mvp.wins}-{data.mvp.losses})
+                </span>
+              </div>
+            )}
+          </div>
+
+          {/* Leaderboard */}
+          <div className="space-y-2">
+            {data.stats
+              .filter((stat): stat is NonNullable<typeof stat> => stat !== null)
+              .slice(0, 5)
+              .map((stat, index) => (
+                <div key={stat.player._id} className="flex items-center gap-3 p-2 rounded-lg bg-background/50">
+                  <span className="w-6 text-center font-bold text-muted-foreground">{index + 1}.</span>
+                  <Avatar size="sm">
+                    <AvatarImage src={stat.player.avatarUrl} />
+                    <AvatarFallback>{stat.player.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium flex-1 truncate">{stat.player.name}</span>
+                  <span className="text-sm">
+                    {stat.wins}-{stat.losses}
+                  </span>
+                  <span className="text-sm text-muted-foreground w-12 text-right">
+                    {stat.winPercentage.toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+          </div>
+        </div>
+
+        {/* Download Button */}
+        <Button className="w-full" size="lg" onClick={handleDownload} disabled={isDownloading}>
+          <Download className="size-5 mr-2" />
+          {isDownloading ? 'Generating...' : 'Download Image'}
+        </Button>
+
+        {/* Full Stats */}
+        <Card>
+          <CardHeader>
+            <CardTitle>All Players</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {data.stats
+              .filter((stat): stat is NonNullable<typeof stat> => stat !== null)
+              .map((stat, index) => (
+                <div key={stat.player._id} className="flex items-center gap-3 py-2">
+                  <span className="w-6 text-center text-muted-foreground">{index + 1}</span>
+                  <Avatar size="sm">
+                    <AvatarImage src={stat.player.avatarUrl} />
+                    <AvatarFallback>{stat.player.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="flex-1 truncate">{stat.player.name}</span>
+                  <span className="text-sm tabular-nums">
+                    {stat.wins}W - {stat.losses}L
+                  </span>
+                  <span className="text-sm text-muted-foreground w-12 text-right tabular-nums">
+                    {stat.winPercentage.toFixed(0)}%
+                  </span>
+                </div>
+              ))}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Done Button */}
+      <Link
+        to="/groups/$groupId"
+        params={{ groupId: data.gameDay.groupId }}
+        className="fixed bottom-6 left-1/2 -translate-x-1/2"
+      >
+        <Button size="lg" className="shadow-lg">
+          Done
+        </Button>
+      </Link>
+    </div>
+  )
+}
