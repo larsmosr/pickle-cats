@@ -921,7 +921,7 @@ function GroupsListPage() {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {groups.map((group) => (
             <Link
               key={group._id}
@@ -1379,7 +1379,7 @@ function GameDaysTab({ groupId }: { groupId: Id<"groups"> }) {
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="flex flex-col gap-3">
           {gameDays.map((gameDay) => (
             <Link
               key={gameDay._id}
@@ -2286,7 +2286,7 @@ function ActiveGameDayPage() {
                 <Card key={game._id} size="sm">
                   <CardContent className="py-2">
                     <div className="flex items-center justify-between text-sm">
-                      <span className="text-muted-foreground">
+                      <span className="font-bold text-lg">
                         Game {game.gameNumber}
                       </span>
                       <div className="flex items-center gap-2">
@@ -2562,39 +2562,6 @@ function SummaryPage() {
           <Download className="size-5 mr-2" />
           {isDownloading ? "Generating..." : "Download Image"}
         </Button>
-
-        {/* Full Stats */}
-        <Card>
-          <CardHeader>
-            <CardTitle>All Players</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {data.stats.map((stat, index) => (
-              <div
-                key={stat!.player._id}
-                className="flex items-center gap-3 py-2"
-              >
-                <span className="w-6 text-center text-muted-foreground">
-                  {index + 1}
-                </span>
-                <Avatar size="sm">
-                  <AvatarImage src={stat!.player.avatarUrl} />
-                  <AvatarFallback>
-                    {stat!.player.name.charAt(0)}
-                  </AvatarFallback>
-                </Avatar>
-                <span className="flex-1 truncate">{stat!.player.name}</span>
-                <span className="text-sm tabular-nums">
-                  {stat!.wins}W - {stat!.losses}L
-                </span>
-                <span className="text-sm text-muted-foreground w-12 text-right tabular-nums">
-                  {stat!.winPercentage.toFixed(0)}%
-                </span>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
 
       {/* Done Button */}
       <Link
