@@ -500,128 +500,132 @@ function ActiveGameDayPage() {
       {/* Swap Drawer */}
       <Drawer open={swapDrawerOpen} onOpenChange={setSwapDrawerOpen}>
         <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Swap {playerToSwap?.name} with...</DrawerTitle>
-          </DrawerHeader>
-          <div className="p-4 space-y-2 max-h-[50vh] overflow-y-auto">
-            {matchup?.sittingOut.map((player) => (
-              <PlayerCard key={player._id} player={player} onClick={() => handleSwapSelect(player)} />
-            ))}
-            {matchup?.team1
-              .filter((p) => p._id !== playerToSwap?._id)
-              .map((player) => (
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>Swap {playerToSwap?.name} with...</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-2 max-h-[50vh] overflow-y-auto">
+              {matchup?.sittingOut.map((player) => (
                 <PlayerCard key={player._id} player={player} onClick={() => handleSwapSelect(player)} />
               ))}
-            {matchup?.team2
-              .filter((p) => p._id !== playerToSwap?._id)
-              .map((player) => (
-                <PlayerCard key={player._id} player={player} onClick={() => handleSwapSelect(player)} />
-              ))}
+              {matchup?.team1
+                .filter((p) => p._id !== playerToSwap?._id)
+                .map((player) => (
+                  <PlayerCard key={player._id} player={player} onClick={() => handleSwapSelect(player)} />
+                ))}
+              {matchup?.team2
+                .filter((p) => p._id !== playerToSwap?._id)
+                .map((player) => (
+                  <PlayerCard key={player._id} player={player} onClick={() => handleSwapSelect(player)} />
+                ))}
+            </div>
+            <DrawerFooter>
+              <DrawerClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
           </div>
-          <DrawerFooter>
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
         </DrawerContent>
       </Drawer>
 
       {/* Edit Game Drawer */}
       <Drawer open={editDrawerOpen} onOpenChange={setEditDrawerOpen}>
         <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle className="text-center">Edit Game {editingGame?.gameNumber}</DrawerTitle>
-          </DrawerHeader>
-          <div className="p-4 space-y-6">
-            {editingGame && (
-              <>
-                {/* Teams with VS between */}
-                <div className="flex items-center justify-center gap-6">
-                  {/* Team 1 */}
-                  <div className="space-y-1">
-                    {editingGame.team1Ids.map((id) => {
-                      const player = attendees.find((p) => p._id === id)
-                      return player ? (
-                        <div key={id} className="flex items-center gap-2 text-sm">
-                          <Avatar size="sm">
-                            <AvatarImage src={player.avatarUrl} />
-                            <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{player.name}</span>
-                        </div>
-                      ) : null
-                    })}
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle className="text-center">Edit Game {editingGame?.gameNumber}</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-6">
+              {editingGame && (
+                <>
+                  {/* Teams with VS between */}
+                  <div className="flex items-center justify-center gap-6">
+                    {/* Team 1 */}
+                    <div className="space-y-1">
+                      {editingGame.team1Ids.map((id) => {
+                        const player = attendees.find((p) => p._id === id)
+                        return player ? (
+                          <div key={id} className="flex items-center gap-2 text-sm">
+                            <Avatar size="sm">
+                              <AvatarImage src={player.avatarUrl} />
+                              <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{player.name}</span>
+                          </div>
+                        ) : null
+                      })}
+                    </div>
+
+                    {/* VS */}
+                    <div className="text-lg font-bold text-muted-foreground">VS</div>
+
+                    {/* Team 2 */}
+                    <div className="space-y-1">
+                      {editingGame.team2Ids.map((id) => {
+                        const player = attendees.find((p) => p._id === id)
+                        return player ? (
+                          <div key={id} className="flex items-center gap-2 text-sm">
+                            <Avatar size="sm">
+                              <AvatarImage src={player.avatarUrl} />
+                              <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
+                            </Avatar>
+                            <span className="font-medium">{player.name}</span>
+                          </div>
+                        ) : null
+                      })}
+                    </div>
                   </div>
 
-                  {/* VS */}
-                  <div className="text-lg font-bold text-muted-foreground">VS</div>
-
-                  {/* Team 2 */}
-                  <div className="space-y-1">
-                    {editingGame.team2Ids.map((id) => {
-                      const player = attendees.find((p) => p._id === id)
-                      return player ? (
-                        <div key={id} className="flex items-center gap-2 text-sm">
-                          <Avatar size="sm">
-                            <AvatarImage src={player.avatarUrl} />
-                            <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
-                          </Avatar>
-                          <span className="font-medium">{player.name}</span>
-                        </div>
-                      ) : null
-                    })}
+                  {/* Score inputs */}
+                  <div className="flex items-center justify-center gap-4">
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      min="0"
+                      className="text-center text-3xl font-bold h-16 w-24 rounded-2xl"
+                      value={editTeam1Score}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '' || Number.parseInt(val, 10) >= 0) {
+                          setEditTeam1Score(val)
+                        }
+                      }}
+                    />
+                    <div className="text-2xl text-muted-foreground font-bold">-</div>
+                    <Input
+                      type="number"
+                      placeholder="0"
+                      min="0"
+                      className="text-center text-3xl font-bold h-16 w-24 rounded-2xl"
+                      value={editTeam2Score}
+                      onChange={(e) => {
+                        const val = e.target.value
+                        if (val === '' || Number.parseInt(val, 10) >= 0) {
+                          setEditTeam2Score(val)
+                        }
+                      }}
+                    />
                   </div>
-                </div>
-
-                {/* Score inputs */}
-                <div className="flex items-center justify-center gap-4">
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    min="0"
-                    className="text-center text-3xl font-bold h-16 w-24 rounded-2xl"
-                    value={editTeam1Score}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      if (val === '' || Number.parseInt(val, 10) >= 0) {
-                        setEditTeam1Score(val)
-                      }
-                    }}
-                  />
-                  <div className="text-2xl text-muted-foreground font-bold">-</div>
-                  <Input
-                    type="number"
-                    placeholder="0"
-                    min="0"
-                    className="text-center text-3xl font-bold h-16 w-24 rounded-2xl"
-                    value={editTeam2Score}
-                    onChange={(e) => {
-                      const val = e.target.value
-                      if (val === '' || Number.parseInt(val, 10) >= 0) {
-                        setEditTeam2Score(val)
-                      }
-                    }}
-                  />
-                </div>
-              </>
-            )}
+                </>
+              )}
+            </div>
+            <DrawerFooter>
+              <Button
+                onClick={handleSaveGameEdit}
+                disabled={editTeam1Score === '' || editTeam2Score === '' || isSavingEdit}
+              >
+                <Check className="size-4 mr-2" />
+                {isSavingEdit ? 'Saving...' : 'Save Changes'}
+              </Button>
+              <Button variant="destructive" onClick={handleDeleteGame}>
+                <Trash2 className="size-4 mr-2" />
+                Delete Game
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
           </div>
-          <DrawerFooter>
-            <Button
-              onClick={handleSaveGameEdit}
-              disabled={editTeam1Score === '' || editTeam2Score === '' || isSavingEdit}
-            >
-              <Check className="size-4 mr-2" />
-              {isSavingEdit ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <Button variant="destructive" onClick={handleDeleteGame}>
-              <Trash2 className="size-4 mr-2" />
-              Delete Game
-            </Button>
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>

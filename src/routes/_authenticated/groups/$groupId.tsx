@@ -8,6 +8,17 @@ import { ArrowDown, ArrowLeft, ArrowUpDown, CalendarIcon, Plus, RefreshCw, Trash
 import { useState } from 'react'
 import { DecorativeBackground } from '@/components/decorative-background'
 import { PlayerCard } from '@/components/player-card'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import { Calendar } from '@/components/ui/calendar'
@@ -181,20 +192,7 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
       ) : (
         <div className="grid grid-cols-2 gap-3">
           {players.map((player) => (
-            <div key={player._id} className="relative group">
-              <PlayerCard player={player} onClick={() => handleEditClick(player)} />
-              <Button
-                variant="destructive"
-                size="icon-xs"
-                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  removePlayer({ id: player._id })
-                }}
-              >
-                <Trash2 className="size-3" />
-              </Button>
-            </div>
+            <PlayerCard key={player._id} player={player} onClick={() => handleEditClick(player)} />
           ))}
         </div>
       )}
@@ -212,60 +210,97 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
           </Button>
         </DrawerTrigger>
         <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Add New Player</DrawerTitle>
-          </DrawerHeader>
-          <div className="p-4 space-y-4">
-            <div className="flex flex-col items-center gap-4">
-              <Avatar className="size-40 ring-4 ring-primary/20">
-                <AvatarImage src={avatarUrl} className="object-cover" />
-                <AvatarFallback className="text-4xl">?</AvatarFallback>
-              </Avatar>
-              <Button variant="outline" size="sm" onClick={() => loadNewAvatar()}>
-                <RefreshCw className="size-4 mr-2" />
-                New Cat
-              </Button>
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>Add New Player</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-4">
+              <div className="flex flex-col items-center gap-4">
+                <Avatar className="size-40 ring-4 ring-primary/20">
+                  <AvatarImage src={avatarUrl} className="object-cover" />
+                  <AvatarFallback className="text-4xl">?</AvatarFallback>
+                </Avatar>
+                <Button variant="outline" size="sm" onClick={() => loadNewAvatar()}>
+                  <RefreshCw className="size-4 mr-2" />
+                  New Cat
+                </Button>
+              </div>
+              <Input placeholder="Player name" value={newName} onChange={(e) => setNewName(e.target.value)} />
             </div>
-            <Input placeholder="Player name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <DrawerFooter>
+              <Button onClick={handleCreate} disabled={!newName.trim() || !avatarUrl || isCreating}>
+                {isCreating ? 'Adding...' : 'Add Player'}
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
           </div>
-          <DrawerFooter>
-            <Button onClick={handleCreate} disabled={!newName.trim() || !avatarUrl || isCreating}>
-              {isCreating ? 'Adding...' : 'Add Player'}
-            </Button>
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
         </DrawerContent>
       </Drawer>
 
       {/* Edit Player Drawer */}
       <Drawer open={isEditOpen} onOpenChange={setIsEditOpen}>
         <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Edit Player</DrawerTitle>
-          </DrawerHeader>
-          <div className="p-4 space-y-4">
-            <div className="flex flex-col items-center gap-4">
-              <Avatar className="size-40 ring-4 ring-primary/20">
-                <AvatarImage src={avatarUrl} className="object-cover" />
-                <AvatarFallback className="text-4xl">{newName.charAt(0) || '?'}</AvatarFallback>
-              </Avatar>
-              <Button variant="outline" size="sm" onClick={() => loadNewAvatar(editingPlayer?._id)}>
-                <RefreshCw className="size-4 mr-2" />
-                New Cat
-              </Button>
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>Edit Player</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-4">
+              <div className="flex flex-col items-center gap-4">
+                <Avatar className="size-40 ring-4 ring-primary/20">
+                  <AvatarImage src={avatarUrl} className="object-cover" />
+                  <AvatarFallback className="text-4xl">{newName.charAt(0) || '?'}</AvatarFallback>
+                </Avatar>
+                <Button variant="outline" size="sm" onClick={() => loadNewAvatar(editingPlayer?._id)}>
+                  <RefreshCw className="size-4 mr-2" />
+                  New Cat
+                </Button>
+              </div>
+              <Input placeholder="Player name" value={newName} onChange={(e) => setNewName(e.target.value)} />
             </div>
-            <Input placeholder="Player name" value={newName} onChange={(e) => setNewName(e.target.value)} />
+            <DrawerFooter>
+              <Button onClick={handleSaveEdit} disabled={!newName.trim() || isSaving}>
+                {isSaving ? 'Saving...' : 'Save Changes'}
+              </Button>
+              <AlertDialog>
+                <AlertDialogTrigger
+                  render={
+                    <Button variant="destructive">
+                      <Trash2 className="size-4 mr-2" />
+                      Delete Player
+                    </Button>
+                  }
+                />
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Delete Player?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Are you sure you want to delete {editingPlayer?.name}? This action cannot be undone.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                      variant="destructive"
+                      onClick={() => {
+                        if (editingPlayer) {
+                          removePlayer({ id: editingPlayer._id })
+                          setIsEditOpen(false)
+                          setEditingPlayer(null)
+                        }
+                      }}
+                    >
+                      Delete
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
+              <DrawerClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
           </div>
-          <DrawerFooter>
-            <Button onClick={handleSaveEdit} disabled={!newName.trim() || isSaving}>
-              {isSaving ? 'Saving...' : 'Save Changes'}
-            </Button>
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>
@@ -378,58 +413,60 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
           </Button>
         </DrawerTrigger>
         <DrawerContent className="max-h-[85vh]">
-          <DrawerHeader>
-            <DrawerTitle>{step === 'date' ? 'Select Date' : "Who's Playing?"}</DrawerTitle>
-          </DrawerHeader>
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>{step === 'date' ? 'Select Date' : "Who's Playing?"}</DrawerTitle>
+            </DrawerHeader>
 
-          {step === 'date' ? (
-            <div className="p-4 flex justify-center">
-              <Calendar mode="single" selected={selectedDate} onSelect={(date) => date && setSelectedDate(date)} />
-            </div>
-          ) : (
-            <div className="p-4 space-y-2 overflow-y-auto max-h-[50vh]">
-              {players?.map((player) => (
-                <div
-                  key={player._id}
-                  className={cn(
-                    'flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors',
-                    selectedAttendees.includes(player._id)
-                      ? 'bg-primary/10 ring-2 ring-primary'
-                      : 'bg-card ring-1 ring-foreground/10 hover:bg-muted/50',
-                  )}
-                  onClick={() => toggleAttendee(player._id)}
-                >
-                  <Checkbox
-                    checked={selectedAttendees.includes(player._id)}
-                    onCheckedChange={() => toggleAttendee(player._id)}
-                  />
-                  <Avatar size="sm">
-                    <AvatarImage src={player.avatarUrl} />
-                    <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span className="font-medium">{player.name}</span>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <DrawerFooter>
             {step === 'date' ? (
-              <Button onClick={() => setStep('attendees')}>Next: Select Players</Button>
+              <div className="p-4 flex justify-center">
+                <Calendar mode="single" selected={selectedDate} onSelect={(date) => date && setSelectedDate(date)} />
+              </div>
             ) : (
-              <>
-                <Button onClick={handleCreate} disabled={selectedAttendees.length < 2 || isCreating}>
-                  {isCreating ? 'Starting...' : `Start with ${selectedAttendees.length} Players`}
-                </Button>
-                <Button variant="outline" onClick={() => setStep('date')}>
-                  Back
-                </Button>
-              </>
+              <div className="p-4 space-y-2 overflow-y-auto max-h-[50vh]">
+                {players?.map((player) => (
+                  <div
+                    key={player._id}
+                    className={cn(
+                      'flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors',
+                      selectedAttendees.includes(player._id)
+                        ? 'bg-primary/10 ring-2 ring-primary'
+                        : 'bg-card ring-1 ring-foreground/10 hover:bg-muted/50',
+                    )}
+                    onClick={() => toggleAttendee(player._id)}
+                  >
+                    <Checkbox
+                      checked={selectedAttendees.includes(player._id)}
+                      onCheckedChange={() => toggleAttendee(player._id)}
+                    />
+                    <Avatar size="sm">
+                      <AvatarImage src={player.avatarUrl} />
+                      <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">{player.name}</span>
+                  </div>
+                ))}
+              </div>
             )}
-            <DrawerClose asChild>
-              <Button variant="ghost">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
+
+            <DrawerFooter>
+              {step === 'date' ? (
+                <Button onClick={() => setStep('attendees')}>Next: Select Players</Button>
+              ) : (
+                <>
+                  <Button onClick={handleCreate} disabled={selectedAttendees.length < 2 || isCreating}>
+                    {isCreating ? 'Starting...' : `Start with ${selectedAttendees.length} Players`}
+                  </Button>
+                  <Button variant="outline" onClick={() => setStep('date')}>
+                    Back
+                  </Button>
+                </>
+              )}
+              <DrawerClose asChild>
+                <Button variant="ghost">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </div>
         </DrawerContent>
       </Drawer>
     </div>
