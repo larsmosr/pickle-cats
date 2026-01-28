@@ -1,0 +1,570 @@
+// src/routes/_authenticated/groups/$groupId.tsx
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import { useQuery, useMutation, useAction } from "convex/react";
+import { useState } from "react";
+import { api } from "../../../../convex/_generated/api";
+import type { Id } from "../../../../convex/_generated/dataModel";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import {
+  Drawer,
+  DrawerClose,
+  DrawerContent,
+  DrawerFooter,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerTrigger,
+} from "@/components/ui/drawer";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { PlayerCard } from "@/components/player-card";
+import {
+  ArrowLeft,
+  Plus,
+  RefreshCw,
+  Trash2,
+  CalendarIcon,
+  Check,
+} from "lucide-react";
+import { format } from "date-fns";
+import { cn } from "@/lib/utils";
+
+export const Route = createFileRoute("/_authenticated/groups/$groupId")({
+  component: GroupHubPage,
+});
+
+function GroupHubPage() {
+  const { groupId } = Route.useParams();
+  const group = useQuery(api.groups.get, {
+    id: groupId as Id<"groups">,
+  });
+
+  if (group === undefined) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Loading...</p>
+      </div>
+    );
+  }
+
+  if (group === null) {
+    return (
+      <div className="flex-1 flex items-center justify-center">
+        <p className="text-muted-foreground">Group not found</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex-1 flex flex-col">
+      <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+        <Link to="/groups">
+          <Button variant="ghost" size="icon-sm">
+            <ArrowLeft className="size-4" />
+          </Button>
+        </Link>
+        <h2 className="text-lg font-semibold">{group.name}</h2>
+      </div>
+
+      <Tabs defaultValue="players" className="flex-1 flex flex-col">
+        <TabsList className="mx-4 mt-4 w-fit">
+          <TabsTrigger value="players">Players</TabsTrigger>
+          <TabsTrigger value="game-days">Game Days</TabsTrigger>
+          <TabsTrigger value="stats">Stats</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="players" className="flex-1 mt-0 p-4">
+          <PlayersTab groupId={groupId as Id<"groups">} />
+        </TabsContent>
+
+        <TabsContent value="game-days" className="flex-1 mt-0 p-4">
+          <GameDaysTab groupId={groupId as Id<"groups">} />
+        </TabsContent>
+
+        <TabsContent value="stats" className="flex-1 mt-0 p-4">
+          <StatsTab groupId={groupId as Id<"groups">} />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+function PlayersTab({ groupId }: { groupId: Id<"groups"> }) {
+  const players = useQuery(api.players.listByGroup, { groupId });
+  const createPlayer = useMutation(api.players.create);
+  const removePlayer = useMutation(api.players.remove);
+  const fetchCatAvatar = useAction(api.players.fetchCatAvatar);
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [newName, setNewName] = useState("");
+  const [avatarUrl, setAvatarUrl] = useState("");
+  const [isLoadingAvatar, setIsLoadingAvatar] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+
+  async function loadNewAvatar() {
+    setIsLoadingAvatar(true);
+    try {
+      const url = await fetchCatAvatar();
+      setAvatarUrl(url);
+    } finally {
+      setIsLoadingAvatar(false);
+    }
+  }
+
+  async function handleOpenDrawer() {
+    setNewName("");
+    await loadNewAvatar();
+    setIsOpen(true);
+  }
+
+  async function handleCreate() {
+    if (!newName.trim() || !avatarUrl) return;
+    setIsCreating(true);
+    try {
+      await createPlayer({
+        groupId,
+        name: newName.trim(),
+        avatarUrl,
+      });
+      setIsOpen(false);
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  return (
+    <div className="pb-24">
+      {players === undefined ? (
+        <p className="text-muted-foreground text-center">Loading...</p>
+      ) : players.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No players yet</p>
+          <p className="text-muted-foreground text-sm">
+            Add players to start tracking games
+          </p>
+        </div>
+      ) : (
+        <div className="grid grid-cols-2 gap-3">
+          {players.map((player) => (
+            <div key={player._id} className="relative group">
+              <PlayerCard player={player} />
+              <Button
+                variant="destructive"
+                size="icon-xs"
+                className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 transition-opacity"
+                onClick={() => removePlayer({ id: player._id })}
+              >
+                <Trash2 className="size-3" />
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <Drawer open={isOpen} onOpenChange={setIsOpen}>
+        <DrawerTrigger asChild>
+          <Button
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 shadow-lg"
+            size="lg"
+            onClick={handleOpenDrawer}
+          >
+            <Plus className="size-5 mr-2" />
+            Add Player
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent>
+          <DrawerHeader>
+            <DrawerTitle>Add New Player</DrawerTitle>
+          </DrawerHeader>
+          <div className="p-4 space-y-4">
+            <div className="flex flex-col items-center gap-3">
+              <Avatar size="lg" className="size-24">
+                <AvatarImage src={avatarUrl} />
+                <AvatarFallback>
+                  {isLoadingAvatar ? "..." : "?"}
+                </AvatarFallback>
+              </Avatar>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={loadNewAvatar}
+                disabled={isLoadingAvatar}
+              >
+                <RefreshCw
+                  className={cn("size-4 mr-2", isLoadingAvatar && "animate-spin")}
+                />
+                New Cat
+              </Button>
+            </div>
+            <Input
+              placeholder="Player name"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+            />
+          </div>
+          <DrawerFooter>
+            <Button
+              onClick={handleCreate}
+              disabled={!newName.trim() || !avatarUrl || isCreating}
+            >
+              {isCreating ? "Adding..." : "Add Player"}
+            </Button>
+            <DrawerClose asChild>
+              <Button variant="outline">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    </div>
+  );
+}
+
+function GameDaysTab({ groupId }: { groupId: Id<"groups"> }) {
+  const gameDays = useQuery(api.gameDays.listByGroup, { groupId });
+  const players = useQuery(api.players.listByGroup, { groupId });
+  const createGameDay = useMutation(api.gameDays.create);
+  const navigate = useNavigate();
+
+  const [isOpen, setIsOpen] = useState(false);
+  const [step, setStep] = useState<"date" | "attendees">("date");
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [selectedAttendees, setSelectedAttendees] = useState<Id<"players">[]>(
+    []
+  );
+  const [isCreating, setIsCreating] = useState(false);
+
+  function handleOpenDrawer() {
+    setStep("date");
+    setSelectedDate(new Date());
+    setSelectedAttendees([]);
+    setIsOpen(true);
+  }
+
+  function toggleAttendee(playerId: Id<"players">) {
+    setSelectedAttendees((prev) =>
+      prev.includes(playerId)
+        ? prev.filter((id) => id !== playerId)
+        : [...prev, playerId]
+    );
+  }
+
+  async function handleCreate() {
+    if (selectedAttendees.length < 2) return;
+    setIsCreating(true);
+    try {
+      const id = await createGameDay({
+        groupId,
+        date: format(selectedDate, "yyyy-MM-dd"),
+        attendeeIds: selectedAttendees,
+      });
+      setIsOpen(false);
+      navigate({ to: "/game-day/$gameDayId", params: { gameDayId: id } });
+    } finally {
+      setIsCreating(false);
+    }
+  }
+
+  return (
+    <div className="pb-24">
+      {gameDays === undefined ? (
+        <p className="text-muted-foreground text-center">Loading...</p>
+      ) : gameDays.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No game days yet</p>
+          <p className="text-muted-foreground text-sm">
+            Start a new game day to begin tracking
+          </p>
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {gameDays.map((gameDay) => (
+            <Link
+              key={gameDay._id}
+              to={
+                gameDay.isComplete
+                  ? "/game-day/$gameDayId/summary"
+                  : "/game-day/$gameDayId"
+              }
+              params={{ gameDayId: gameDay._id }}
+            >
+              <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+                <CardContent className="py-3 flex items-center justify-between">
+                  <div>
+                    <p className="font-medium">
+                      {format(new Date(gameDay.date), "EEEE, MMMM d")}
+                    </p>
+                    <p className="text-sm text-muted-foreground">
+                      {gameDay.gameCount} games played
+                    </p>
+                  </div>
+                  {gameDay.isComplete && (
+                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">
+                      Complete
+                    </span>
+                  )}
+                </CardContent>
+              </Card>
+            </Link>
+          ))}
+        </div>
+      )}
+
+      <Drawer open={isOpen} onOpenChange={setIsOpen}>
+        <DrawerTrigger asChild>
+          <Button
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 shadow-lg"
+            size="lg"
+            onClick={handleOpenDrawer}
+            disabled={!players || players.length < 2}
+          >
+            <Plus className="size-5 mr-2" />
+            New Game Day
+          </Button>
+        </DrawerTrigger>
+        <DrawerContent className="max-h-[85vh]">
+          <DrawerHeader>
+            <DrawerTitle>
+              {step === "date" ? "Select Date" : "Who's Playing?"}
+            </DrawerTitle>
+          </DrawerHeader>
+
+          {step === "date" ? (
+            <div className="p-4 flex justify-center">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={(date) => date && setSelectedDate(date)}
+              />
+            </div>
+          ) : (
+            <div className="p-4 space-y-2 overflow-y-auto max-h-[50vh]">
+              {players?.map((player) => (
+                <div
+                  key={player._id}
+                  className={cn(
+                    "flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors",
+                    selectedAttendees.includes(player._id)
+                      ? "bg-primary/10 ring-2 ring-primary"
+                      : "bg-card ring-1 ring-foreground/10 hover:bg-muted/50"
+                  )}
+                  onClick={() => toggleAttendee(player._id)}
+                >
+                  <Checkbox
+                    checked={selectedAttendees.includes(player._id)}
+                    onCheckedChange={() => toggleAttendee(player._id)}
+                  />
+                  <Avatar size="sm">
+                    <AvatarImage src={player.avatarUrl} />
+                    <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
+                  </Avatar>
+                  <span className="font-medium">{player.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <DrawerFooter>
+            {step === "date" ? (
+              <Button onClick={() => setStep("attendees")}>
+                Next: Select Players
+              </Button>
+            ) : (
+              <>
+                <Button
+                  onClick={handleCreate}
+                  disabled={selectedAttendees.length < 2 || isCreating}
+                >
+                  {isCreating
+                    ? "Starting..."
+                    : `Start with ${selectedAttendees.length} Players`}
+                </Button>
+                <Button variant="outline" onClick={() => setStep("date")}>
+                  Back
+                </Button>
+              </>
+            )}
+            <DrawerClose asChild>
+              <Button variant="ghost">Cancel</Button>
+            </DrawerClose>
+          </DrawerFooter>
+        </DrawerContent>
+      </Drawer>
+    </div>
+  );
+}
+
+type StatsPeriod =
+  | { type: "date"; date: string }
+  | { type: "days"; days: number }
+  | { type: "month"; year: number; month: number }
+  | { type: "all" };
+
+function StatsTab({ groupId }: { groupId: Id<"groups"> }) {
+  const today = new Date();
+  const [period, setPeriod] = useState<StatsPeriod>({
+    type: "date",
+    date: format(today, "yyyy-MM-dd"),
+  });
+  const [selectedDate, setSelectedDate] = useState<Date>(today);
+  const [sortBy, setSortBy] = useState<
+    "winPercentage" | "wins" | "losses" | "gamesPlayed" | "plusMinus"
+  >("winPercentage");
+
+  const stats = useQuery(api.games.getStats, { groupId, period });
+
+  function handleDateSelect(date: Date | undefined) {
+    if (date) {
+      setSelectedDate(date);
+      setPeriod({ type: "date", date: format(date, "yyyy-MM-dd") });
+    }
+  }
+
+  const sortedStats = stats
+    ? [...stats].sort((a, b) => {
+        if (sortBy === "losses") return b.losses - a.losses;
+        return b[sortBy] - a[sortBy];
+      })
+    : [];
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2 flex-wrap">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant={period.type === "date" ? "default" : "outline"}
+              size="sm"
+            >
+              <CalendarIcon className="size-4 mr-1" />
+              {period.type === "date"
+                ? format(selectedDate, "MMM d")
+                : "Date"}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDateSelect}
+            />
+          </PopoverContent>
+        </Popover>
+        <Button
+          variant={
+            period.type === "days" && period.days === 7 ? "default" : "outline"
+          }
+          size="sm"
+          onClick={() => setPeriod({ type: "days", days: 7 })}
+        >
+          7 Days
+        </Button>
+        <Button
+          variant={period.type === "month" ? "default" : "outline"}
+          size="sm"
+          onClick={() =>
+            setPeriod({
+              type: "month",
+              year: today.getFullYear(),
+              month: today.getMonth() + 1,
+            })
+          }
+        >
+          {format(today, "MMM")}
+        </Button>
+        <Button
+          variant={period.type === "all" ? "default" : "outline"}
+          size="sm"
+          onClick={() => setPeriod({ type: "all" })}
+        >
+          All Time
+        </Button>
+      </div>
+
+      {stats === undefined ? (
+        <p className="text-muted-foreground text-center py-8">Loading...</p>
+      ) : sortedStats.length === 0 ? (
+        <p className="text-muted-foreground text-center py-8">
+          No games in this period
+        </p>
+      ) : (
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead className="w-12">#</TableHead>
+              <TableHead>Player</TableHead>
+              <TableHead
+                className="text-right cursor-pointer hover:text-foreground"
+                onClick={() => setSortBy("winPercentage")}
+              >
+                Win%{sortBy === "winPercentage" && " ↓"}
+              </TableHead>
+              <TableHead
+                className="text-right cursor-pointer hover:text-foreground"
+                onClick={() => setSortBy("wins")}
+              >
+                W{sortBy === "wins" && " ↓"}
+              </TableHead>
+              <TableHead
+                className="text-right cursor-pointer hover:text-foreground"
+                onClick={() => setSortBy("losses")}
+              >
+                L{sortBy === "losses" && " ↓"}
+              </TableHead>
+              <TableHead
+                className="text-right cursor-pointer hover:text-foreground"
+                onClick={() => setSortBy("plusMinus")}
+              >
+                +/-{sortBy === "plusMinus" && " ↓"}
+              </TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sortedStats.map((stat, index) => (
+              <TableRow key={stat.player._id}>
+                <TableCell className="font-medium">{index + 1}</TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Avatar size="sm">
+                      <AvatarImage src={stat.player.avatarUrl} />
+                      <AvatarFallback>
+                        {stat.player.name.charAt(0)}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="truncate max-w-[100px]">
+                      {stat.player.name}
+                    </span>
+                  </div>
+                </TableCell>
+                <TableCell className="text-right">
+                  {stat.winPercentage.toFixed(0)}%
+                </TableCell>
+                <TableCell className="text-right">{stat.wins}</TableCell>
+                <TableCell className="text-right">{stat.losses}</TableCell>
+                <TableCell className="text-right">
+                  {stat.plusMinus > 0 ? "+" : ""}
+                  {stat.plusMinus}
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      )}
+    </div>
+  );
+}
