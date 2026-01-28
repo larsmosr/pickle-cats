@@ -109,6 +109,7 @@ function SummaryPage() {
             padding: isExporting ? '20px' : '32px 24px',
             display: 'flex',
             flexDirection: 'column',
+            justifyContent: 'center',
           }}
         >
           {/* Header */}
@@ -158,10 +159,10 @@ function SummaryPage() {
           </div>
 
           {/* Leaderboard */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', flex: 1 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
             {data.stats
               .filter((stat): stat is NonNullable<typeof stat> => stat !== null)
-              .slice(0, 8)
+              .slice(0, 10)
               .map((stat, index) => (
                 <div
                   key={stat.player._id}
