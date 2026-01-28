@@ -20,9 +20,15 @@ export const Route = createFileRoute('/_authenticated/game-day/$gameDayId_/summa
   head: () => ({
     meta: [
       { title: 'Game Day Summary | Pickle Cats' },
-      { name: 'description', content: 'View your game day results, player rankings, and share your pickleball achievements.' },
+      {
+        name: 'description',
+        content: 'View your game day results, player rankings, and share your pickleball achievements.',
+      },
       { property: 'og:title', content: 'Game Day Summary | Pickle Cats' },
-      { property: 'og:description', content: 'View your game day results, player rankings, and share your pickleball achievements.' },
+      {
+        property: 'og:description',
+        content: 'View your game day results, player rankings, and share your pickleball achievements.',
+      },
     ],
   }),
   component: SummaryPage,
@@ -114,7 +120,7 @@ function SummaryPage() {
           style={{
             width: '360px',
             minHeight: '640px',
-            background: 'linear-gradient(135deg, #ebe5f5 0%, #e0d8f0 100%)',
+            background: '#E7E2FE',
             padding: isExporting ? '20px' : '32px 24px',
             display: 'flex',
             flexDirection: 'column',
@@ -179,14 +185,41 @@ function SummaryPage() {
                         <AvatarImage src={stat.player.avatarUrl} />
                         <AvatarFallback>{stat.player.name.charAt(0)}</AvatarFallback>
                       </Avatar>
-                      <span style={{ fontWeight: 500, flex: 1, color: '#3d3654', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <span
+                        style={{
+                          fontWeight: 500,
+                          flex: 1,
+                          color: '#3d3654',
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: '6px',
+                        }}
+                      >
                         {stat.player.name}
                         {isMvp && (
                           <>
-                            <svg style={{ width: '14px', height: '14px', color: '#eab308', fill: '#eab308' }} viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                              <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" fill="currentColor" />
+                            <svg
+                              style={{ width: '14px', height: '14px', color: '#eab308', fill: '#eab308' }}
+                              viewBox="0 0 24 24"
+                              xmlns="http://www.w3.org/2000/svg"
+                            >
+                              <path
+                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
+                                fill="currentColor"
+                              />
                             </svg>
-                            <span style={{ fontSize: '10px', fontWeight: 600, color: '#ca8a04', background: '#fef9c3', padding: '2px 6px', borderRadius: '8px' }}>MVP</span>
+                            <span
+                              style={{
+                                fontSize: '10px',
+                                fontWeight: 600,
+                                color: '#ca8a04',
+                                background: '#fef9c3',
+                                padding: '2px 6px',
+                                borderRadius: '8px',
+                              }}
+                            >
+                              MVP
+                            </span>
                           </>
                         )}
                       </span>
@@ -222,7 +255,10 @@ function SummaryPage() {
         params={{ groupId: data.gameDay.groupId }}
         className="fixed bottom-6 left-1/2 -translate-x-1/2 z-20"
       >
-        <Button size="lg" className="shadow-lg bg-foreground text-background hover:bg-foreground/90 rounded-2xl h-12 px-8">
+        <Button
+          size="lg"
+          className="shadow-lg bg-foreground text-background hover:bg-foreground/90 rounded-2xl h-12 px-8"
+        >
           Done
         </Button>
       </Link>

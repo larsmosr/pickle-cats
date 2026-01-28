@@ -29,9 +29,15 @@ export const Route = createFileRoute('/_authenticated/groups/')({
   head: () => ({
     meta: [
       { title: 'My Groups | Pickle Cats' },
-      { name: 'description', content: 'View and manage your pickleball groups. Create new groups and track game days.' },
+      {
+        name: 'description',
+        content: 'View and manage your pickleball groups. Create new groups and track game days.',
+      },
       { property: 'og:title', content: 'My Groups | Pickle Cats' },
-      { property: 'og:description', content: 'View and manage your pickleball groups. Create new groups and track game days.' },
+      {
+        property: 'og:description',
+        content: 'View and manage your pickleball groups. Create new groups and track game days.',
+      },
     ],
   }),
   component: GroupsListPage,

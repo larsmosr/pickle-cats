@@ -35,7 +35,7 @@ export function PlayerCard({
       className={cn(
         "flex items-center rounded-xl bg-card ring-1 ring-foreground/10 transition-all",
         sizeClasses[size],
-        onClick && "cursor-pointer hover:bg-muted/50 active:scale-[0.98]",
+        onClick && "cursor-pointer hover:bg-muted active:scale-[0.98]",
         selected && "ring-2 ring-primary bg-primary/5",
         className
       )}
