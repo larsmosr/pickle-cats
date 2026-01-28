@@ -1,6 +1,6 @@
 // convex/players.ts
 import { v } from "convex/values";
-import { mutation, query, action } from "./_generated/server";
+import { mutation, query } from "./_generated/server";
 
 export const listByGroup = query({
   args: { groupId: v.id("groups") },
@@ -43,11 +43,17 @@ export const remove = mutation({
   },
 });
 
-export const fetchCatAvatar = action({
-  args: {},
-  handler: async () => {
-    const response = await fetch("https://api.thecatapi.com/v1/images/search");
-    const data = await response.json();
-    return data[0]?.url ?? "https://placekitten.com/200/200";
+export const update = mutation({
+  args: {
+    id: v.id("players"),
+    name: v.optional(v.string()),
+    avatarUrl: v.optional(v.string()),
+  },
+  handler: async (ctx, args) => {
+    const updates: { name?: string; avatarUrl?: string } = {};
+    if (args.name !== undefined) updates.name = args.name;
+    if (args.avatarUrl !== undefined) updates.avatarUrl = args.avatarUrl;
+    await ctx.db.patch(args.id, updates);
   },
 });
+
