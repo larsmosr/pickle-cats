@@ -110,87 +110,91 @@ function SummaryPage() {
             display: 'flex',
             flexDirection: 'column',
             justifyContent: 'center',
+            alignItems: 'center',
           }}
         >
-          {/* Header */}
-          <div style={{ textAlign: 'center', marginBottom: '24px' }}>
-            <img
-              src="/app-logo.png"
-              alt="Pickle Cats"
-              style={{ width: '120px', height: '120px', margin: '0 auto', objectFit: 'contain' }}
-            />
-            <p style={{ color: '#5c5470', fontSize: '20px', fontWeight: 500, marginTop: '16px' }}>
-              {data.group?.name}
-            </p>
-            <p style={{ color: '#7a7490', fontSize: '16px', marginTop: '4px' }}>
-              {format(new Date(data.gameDay.date), 'MMMM d, yyyy')}
-            </p>
-          </div>
+          {/* Inner wrapper to keep content together */}
+          <div style={{ width: '100%' }}>
+            {/* Header */}
+            <div style={{ textAlign: 'center', marginBottom: '24px' }}>
+              <img
+                src="/app-logo.png"
+                alt="Pickle Cats"
+                style={{ width: '120px', height: '120px', margin: '0 auto', objectFit: 'contain' }}
+              />
+              <p style={{ color: '#5c5470', fontSize: '20px', fontWeight: 500, marginTop: '16px' }}>
+                {data.group?.name}
+              </p>
+              <p style={{ color: '#7a7490', fontSize: '16px', marginTop: '4px' }}>
+                {format(new Date(data.gameDay.date), 'MMMM d, yyyy')}
+              </p>
+            </div>
 
-          {/* Stats */}
-          <div
-            style={{
-              textAlign: 'center',
-              padding: '20px 0',
-              borderTop: '1px solid rgba(92, 84, 112, 0.15)',
-              borderBottom: '1px solid rgba(92, 84, 112, 0.15)',
-              marginBottom: '20px',
-            }}
-          >
-            <p style={{ fontSize: '28px', fontWeight: 700, color: '#3d3654' }}>
-              {data.totalGames} Games Played
-            </p>
-            {data.mvp && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: '8px',
-                  marginTop: '12px',
-                }}
-              >
-                <Star className="size-5 text-yellow-500 fill-yellow-500" />
-                <span style={{ color: '#5c5470', fontWeight: 500 }}>
-                  MVP: {data.mvp.player.name} ({data.mvp.wins}-{data.mvp.losses})
-                </span>
-              </div>
-            )}
-          </div>
-
-          {/* Leaderboard */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-            {data.stats
-              .filter((stat): stat is NonNullable<typeof stat> => stat !== null)
-              .slice(0, 10)
-              .map((stat, index) => (
+            {/* Stats */}
+            <div
+              style={{
+                textAlign: 'center',
+                padding: '20px 0',
+                borderTop: '1px solid rgba(92, 84, 112, 0.15)',
+                borderBottom: '1px solid rgba(92, 84, 112, 0.15)',
+                marginBottom: '20px',
+              }}
+            >
+              <p style={{ fontSize: '28px', fontWeight: 700, color: '#3d3654' }}>
+                {data.totalGames} Games Played
+              </p>
+              {data.mvp && (
                 <div
-                  key={stat.player._id}
                   style={{
                     display: 'flex',
                     alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 16px',
-                    borderRadius: '16px',
-                    background: 'rgba(255, 255, 255, 0.6)',
+                    justifyContent: 'center',
+                    gap: '8px',
+                    marginTop: '12px',
                   }}
                 >
-                  <span style={{ width: '28px', textAlign: 'center', fontWeight: 700, color: '#7a7490' }}>
-                    {index + 1}.
-                  </span>
-                  <Avatar size="sm">
-                    <AvatarImage src={stat.player.avatarUrl} />
-                    <AvatarFallback>{stat.player.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <span style={{ fontWeight: 500, flex: 1, color: '#3d3654' }}>{stat.player.name}</span>
-                  <span style={{ fontSize: '14px', color: '#5c5470' }}>
-                    {stat.wins}-{stat.losses}
-                  </span>
-                  <span style={{ fontSize: '14px', color: '#7a7490', width: '48px', textAlign: 'right' }}>
-                    {stat.winPercentage.toFixed(0)}%
+                  <Star className="size-5 text-yellow-500 fill-yellow-500" />
+                  <span style={{ color: '#5c5470', fontWeight: 500 }}>
+                    MVP: {data.mvp.player.name} ({data.mvp.wins}-{data.mvp.losses})
                   </span>
                 </div>
-              ))}
+              )}
+            </div>
+
+            {/* Leaderboard */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {data.stats
+                .filter((stat): stat is NonNullable<typeof stat> => stat !== null)
+                .slice(0, 10)
+                .map((stat, index) => (
+                  <div
+                    key={stat.player._id}
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '12px',
+                      padding: '12px 16px',
+                      borderRadius: '16px',
+                      background: 'rgba(255, 255, 255, 0.6)',
+                    }}
+                  >
+                    <span style={{ width: '28px', textAlign: 'center', fontWeight: 700, color: '#7a7490' }}>
+                      {index + 1}.
+                    </span>
+                    <Avatar size="sm">
+                      <AvatarImage src={stat.player.avatarUrl} />
+                      <AvatarFallback>{stat.player.name.charAt(0)}</AvatarFallback>
+                    </Avatar>
+                    <span style={{ fontWeight: 500, flex: 1, color: '#3d3654' }}>{stat.player.name}</span>
+                    <span style={{ fontSize: '14px', color: '#5c5470' }}>
+                      {stat.wins}-{stat.losses}
+                    </span>
+                    <span style={{ fontSize: '14px', color: '#7a7490', width: '48px', textAlign: 'right' }}>
+                      {stat.winPercentage.toFixed(0)}%
+                    </span>
+                  </div>
+                ))}
+            </div>
           </div>
         </div>
 
