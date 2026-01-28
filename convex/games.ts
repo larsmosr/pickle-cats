@@ -2,6 +2,17 @@
 import { v } from "convex/values";
 import { mutation, query } from "./_generated/server";
 
+// Bayesian average constants for ranking
+// C = confidence factor (games needed before trusting actual win rate)
+// M = assumed average win percentage for players with few games
+const BAYESIAN_C = 10;
+const BAYESIAN_M = 50;
+
+function calculateAdjustedWinPercentage(wins: number, gamesPlayed: number): number {
+  if (gamesPlayed === 0) return 0;
+  return ((wins + (BAYESIAN_C * BAYESIAN_M) / 100) / (gamesPlayed + BAYESIAN_C)) * 100;
+}
+
 export const listByGameDay = query({
   args: { gameDayId: v.id("gameDays") },
   handler: async (ctx, args) => {
@@ -149,6 +160,7 @@ export const getStats = query({
 
       const gamesPlayed = wins + losses;
       const winPercentage = gamesPlayed > 0 ? (wins / gamesPlayed) * 100 : 0;
+      const adjustedWinPercentage = calculateAdjustedWinPercentage(wins, gamesPlayed);
       const plusMinus = pointsFor - pointsAgainst;
 
       return {
@@ -157,14 +169,15 @@ export const getStats = query({
         losses,
         gamesPlayed,
         winPercentage,
+        adjustedWinPercentage,
         plusMinus,
       };
     });
 
-    // Sort by win percentage descending (default)
+    // Sort by adjusted win percentage descending (accounts for sample size)
     return stats
       .filter((s) => s.gamesPlayed > 0)
-      .sort((a, b) => b.winPercentage - a.winPercentage);
+      .sort((a, b) => b.adjustedWinPercentage - a.adjustedWinPercentage);
   },
 });
 
@@ -212,6 +225,7 @@ export const getGameDayStats = query({
 
       const gamesPlayed = wins + losses;
       const winPercentage = gamesPlayed > 0 ? (wins / gamesPlayed) * 100 : 0;
+      const adjustedWinPercentage = calculateAdjustedWinPercentage(wins, gamesPlayed);
 
       return {
         player,
@@ -219,13 +233,14 @@ export const getGameDayStats = query({
         losses,
         gamesPlayed,
         winPercentage,
+        adjustedWinPercentage,
       };
     });
 
     const validStats = stats.filter(Boolean).filter((s) => s!.gamesPlayed > 0);
-    validStats.sort((a, b) => b!.winPercentage - a!.winPercentage);
+    validStats.sort((a, b) => b!.adjustedWinPercentage - a!.adjustedWinPercentage);
 
-    // Find MVP (highest win % with min 2 games)
+    // Find MVP (highest adjusted win % with min 2 games)
     const mvpCandidates = validStats.filter((s) => s!.gamesPlayed >= 2);
     const mvp = mvpCandidates[0] ?? null;
 
