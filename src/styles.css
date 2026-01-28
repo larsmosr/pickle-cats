@@ -39,6 +39,12 @@
     --sidebar-border: oklch(0.9073 0.0530 306.0902);
     --sidebar-ring: oklch(0.7090 0.1592 293.5412);
     --destructive-foreground: oklch(1.0000 0 0);
+    /* Warm accent colors - cream/yellow tones */
+    --warm: oklch(0.94 0.06 85);
+    --warm-foreground: oklch(0.35 0.05 60);
+    --warm-muted: oklch(0.97 0.03 85);
+    /* Decorative curve color */
+    --curve: oklch(0.85 0.08 293);
     --font-sans: Open Sans, sans-serif;
     --font-serif: Source Serif 4, serif;
     --font-mono: IBM Plex Mono, monospace;
@@ -50,14 +56,15 @@
     --shadow-offset-y: 8px;
     --letter-spacing: 0em;
     --spacing: 0.25rem;
-    --shadow-2xs: 0px 8px 16px -4px hsl(0 0% 0% / 0.04);
-    --shadow-xs: 0px 8px 16px -4px hsl(0 0% 0% / 0.04);
-    --shadow-sm: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 1px 2px -5px hsl(0 0% 0% / 0.08);
-    --shadow: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 1px 2px -5px hsl(0 0% 0% / 0.08);
-    --shadow-md: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 2px 4px -5px hsl(0 0% 0% / 0.08);
-    --shadow-lg: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 4px 6px -5px hsl(0 0% 0% / 0.08);
-    --shadow-xl: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 8px 10px -5px hsl(0 0% 0% / 0.08);
-    --shadow-2xl: 0px 8px 16px -4px hsl(0 0% 0% / 0.20);
+    /* Softer shadows for mobile feel */
+    --shadow-2xs: 0px 2px 8px -2px hsl(270 30% 50% / 0.06);
+    --shadow-xs: 0px 4px 12px -2px hsl(270 30% 50% / 0.08);
+    --shadow-sm: 0px 6px 16px -4px hsl(270 30% 50% / 0.10);
+    --shadow: 0px 8px 24px -6px hsl(270 30% 50% / 0.12);
+    --shadow-md: 0px 12px 32px -8px hsl(270 30% 50% / 0.14);
+    --shadow-lg: 0px 16px 40px -10px hsl(270 30% 50% / 0.16);
+    --shadow-xl: 0px 20px 50px -12px hsl(270 30% 50% / 0.18);
+    --shadow-2xl: 0px 25px 60px -15px hsl(270 30% 50% / 0.22);
     --tracking-normal: 0em;
 }
 
@@ -94,6 +101,12 @@
     --sidebar-border: oklch(0.3416 0.0444 308.8496);
     --sidebar-ring: oklch(0.7874 0.1179 295.7538);
     --destructive-foreground: oklch(0.2161 0.0061 56.0434);
+    /* Warm accent colors - cream/yellow tones (dark mode) */
+    --warm: oklch(0.45 0.08 85);
+    --warm-foreground: oklch(0.92 0.04 85);
+    --warm-muted: oklch(0.35 0.05 85);
+    /* Decorative curve color (dark mode) */
+    --curve: oklch(0.45 0.10 293);
     --radius: 1.5rem;
     --font-sans: Open Sans, sans-serif;
     --font-serif: Source Serif 4, serif;
@@ -106,14 +119,15 @@
     --shadow-offset-y: 8px;
     --letter-spacing: 0em;
     --spacing: 0.25rem;
-    --shadow-2xs: 0px 8px 16px -4px hsl(0 0% 0% / 0.04);
-    --shadow-xs: 0px 8px 16px -4px hsl(0 0% 0% / 0.04);
-    --shadow-sm: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 1px 2px -5px hsl(0 0% 0% / 0.08);
-    --shadow: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 1px 2px -5px hsl(0 0% 0% / 0.08);
-    --shadow-md: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 2px 4px -5px hsl(0 0% 0% / 0.08);
-    --shadow-lg: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 4px 6px -5px hsl(0 0% 0% / 0.08);
-    --shadow-xl: 0px 8px 16px -4px hsl(0 0% 0% / 0.08), 0px 8px 10px -5px hsl(0 0% 0% / 0.08);
-    --shadow-2xl: 0px 8px 16px -4px hsl(0 0% 0% / 0.20);
+    /* Softer shadows for mobile feel (dark mode) */
+    --shadow-2xs: 0px 2px 8px -2px hsl(270 30% 10% / 0.15);
+    --shadow-xs: 0px 4px 12px -2px hsl(270 30% 10% / 0.20);
+    --shadow-sm: 0px 6px 16px -4px hsl(270 30% 10% / 0.25);
+    --shadow: 0px 8px 24px -6px hsl(270 30% 10% / 0.30);
+    --shadow-md: 0px 12px 32px -8px hsl(270 30% 10% / 0.35);
+    --shadow-lg: 0px 16px 40px -10px hsl(270 30% 10% / 0.40);
+    --shadow-xl: 0px 20px 50px -12px hsl(270 30% 10% / 0.45);
+    --shadow-2xl: 0px 25px 60px -15px hsl(270 30% 10% / 0.50);
 }
 
 @theme inline {
@@ -149,6 +163,11 @@
     --color-card: var(--card);
     --color-foreground: var(--foreground);
     --color-background: var(--background);
+    /* Warm accent colors */
+    --color-warm: var(--warm);
+    --color-warm-foreground: var(--warm-foreground);
+    --color-warm-muted: var(--warm-muted);
+    --color-curve: var(--curve);
     --radius-sm: calc(var(--radius) - 4px);
     --radius-md: calc(var(--radius) - 2px);
     --radius-lg: var(--radius);

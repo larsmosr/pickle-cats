@@ -6,6 +6,7 @@ import { useMutation, useQuery } from 'convex/react'
 import { format } from 'date-fns'
 import { ArrowDown, ArrowLeft, ArrowUpDown, CalendarIcon, Plus, RefreshCw, Trash2, Users } from 'lucide-react'
 import { useState } from 'react'
+import { DecorativeBackground } from '@/components/decorative-background'
 import { PlayerCard } from '@/components/player-card'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,14 @@ export const Route = createFileRoute('/_authenticated/groups/$groupId')({
       queryClient.ensureQueryData(convexQuery(api.gameDays.listByGroup, { groupId: groupId as Id<'groups'> })),
     ])
   },
+  head: () => ({
+    meta: [
+      { title: 'Group | Pickle Cats' },
+      { name: 'description', content: 'Manage your pickleball group, view players, game days, and statistics.' },
+      { property: 'og:title', content: 'Group | Pickle Cats' },
+      { property: 'og:description', content: 'Manage your pickleball group, view players, game days, and statistics.' },
+    ],
+  }),
   component: GroupHubPage,
 })
 
@@ -55,8 +64,10 @@ function GroupHubPage() {
   }
 
   return (
-    <div className="flex-1 flex flex-col">
-      <div className="px-4 py-3 border-b border-border flex items-center gap-3">
+    <div className="flex-1 flex flex-col relative">
+      <DecorativeBackground variant="minimal" />
+
+      <div className="px-4 py-3 border-b border-border/50 flex items-center gap-3 relative z-10 bg-background/80 backdrop-blur-sm">
         <Link to="/groups">
           <Button variant="ghost" size="icon-sm">
             <ArrowLeft className="size-4" />
@@ -65,8 +76,8 @@ function GroupHubPage() {
         <h2 className="text-lg font-semibold flex-1">{group.name}</h2>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="mx-4 mt-4 w-fit">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col relative z-10">
+        <TabsList className="mx-4 mt-4 w-fit bg-card/80 backdrop-blur-sm shadow-sm">
           <TabsTrigger value="game-days">Game Days</TabsTrigger>
           <TabsTrigger value="players">Players</TabsTrigger>
           <TabsTrigger value="stats">Stats</TabsTrigger>
@@ -191,7 +202,11 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
       {/* Add Player Drawer */}
       <Drawer open={isOpen} onOpenChange={setIsOpen}>
         <DrawerTrigger asChild>
-          <Button className="fixed bottom-6 left-1/2 -translate-x-1/2 shadow-lg" size="lg" onClick={handleOpenDrawer}>
+          <Button
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 shadow-lg bg-foreground text-background hover:bg-foreground/90 rounded-2xl h-12 px-6"
+            size="lg"
+            onClick={handleOpenDrawer}
+          >
             <Plus className="size-5 mr-2" />
             Add Player
           </Button>
@@ -332,14 +347,16 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
               to={gameDay.isComplete ? '/game-day/$gameDayId/summary' : '/game-day/$gameDayId'}
               params={{ gameDayId: gameDay._id }}
             >
-              <Card className="hover:bg-muted/50 transition-colors cursor-pointer">
+              <Card className="hover:bg-card/80 transition-all cursor-pointer shadow-sm hover:shadow-md border-0 bg-card/90">
                 <CardContent className="py-0 flex items-center justify-between">
                   <div>
                     <p className="font-medium">{format(new Date(gameDay.date), 'EEEE, MMMM d')}</p>
                     <p className="text-sm text-muted-foreground">{gameDay.gameCount} games played</p>
                   </div>
                   {gameDay.isComplete && (
-                    <span className="text-xs bg-primary/10 text-primary px-2 py-1 rounded-full">Complete</span>
+                    <span className="text-xs bg-warm text-warm-foreground px-2.5 py-1 rounded-full font-medium">
+                      Complete
+                    </span>
                   )}
                 </CardContent>
               </Card>
@@ -351,7 +368,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
       <Drawer open={isOpen} onOpenChange={setIsOpen}>
         <DrawerTrigger asChild>
           <Button
-            className="fixed bottom-6 left-1/2 -translate-x-1/2 shadow-lg"
+            className="fixed bottom-6 left-1/2 -translate-x-1/2 shadow-lg bg-foreground text-background hover:bg-foreground/90 rounded-2xl h-12 px-6"
             size="lg"
             onClick={handleOpenDrawer}
             disabled={players.length < 2}
@@ -502,7 +519,12 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
               <TableHead className="w-8 px-2">#</TableHead>
               <TableHead>Player</TableHead>
               <TableHead className="text-right w-14 px-1">
-                <Button variant="ghost" size="sm" className="h-8 px-1 text-primary" onClick={() => setSortBy('winPercentage')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-1 text-primary"
+                  onClick={() => setSortBy('winPercentage')}
+                >
                   W%
                   {sortBy === 'winPercentage' ? (
                     <ArrowDown className="ml-0.5 size-3" />
@@ -532,7 +554,12 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
                 </Button>
               </TableHead>
               <TableHead className="text-right w-12 px-1">
-                <Button variant="ghost" size="sm" className="h-8 px-1 text-primary" onClick={() => setSortBy('plusMinus')}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-1 text-primary"
+                  onClick={() => setSortBy('plusMinus')}
+                >
                   +/-
                   {sortBy === 'plusMinus' ? (
                     <ArrowDown className="ml-0.5 size-3" />
@@ -547,7 +574,7 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
             {sortedStats.map((stat, index) => (
               <TableRow key={stat.player._id}>
                 <TableCell className="font-medium px-2 w-8">{index + 1}</TableCell>
-                <TableCell className="overflow-hidden max-w-[120px]">
+                <TableCell className="overflow-hidden max-w-[100px]">
                   <div className="flex items-center gap-2 min-w-0">
                     <Avatar size="sm" className="shrink-0">
                       <AvatarImage src={stat.player.avatarUrl} />
