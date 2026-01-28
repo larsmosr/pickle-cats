@@ -101,7 +101,7 @@ function SummaryPage() {
         {/* Downloadable Summary Card - 9:16 portrait format with light purple theme */}
         <div
           ref={summaryRef}
-          className={isExporting ? 'mx-auto' : 'mx-auto rounded-3xl overflow-hidden'}
+          className={isExporting ? '' : 'mx-auto rounded-3xl overflow-hidden'}
           style={{
             width: '360px',
             minHeight: '640px',
@@ -111,6 +111,7 @@ function SummaryPage() {
             flexDirection: 'column',
             justifyContent: 'center',
             alignItems: 'center',
+            margin: isExporting ? 0 : undefined,
           }}
         >
           {/* Inner wrapper to keep content together */}
