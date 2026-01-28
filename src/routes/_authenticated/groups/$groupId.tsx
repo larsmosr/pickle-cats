@@ -106,8 +106,13 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
   const [isCreating, setIsCreating] = useState(false)
   const [isSaving, setIsSaving] = useState(false)
 
-  function loadNewAvatar() {
-    setAvatarUrl(getRandomCatUrl())
+  function getUsedAvatars(excludePlayerId?: Id<'players'>) {
+    if (!players) return []
+    return players.filter((p) => p._id !== excludePlayerId).map((p) => p.avatarUrl)
+  }
+
+  function loadNewAvatar(excludePlayerId?: Id<'players'>) {
+    setAvatarUrl(getRandomCatUrl(getUsedAvatars(excludePlayerId)))
   }
 
   function handleOpenDrawer() {
@@ -235,7 +240,7 @@ function PlayersTab({ groupId }: { groupId: Id<'groups'> }) {
                   {newName.charAt(0) || '?'}
                 </AvatarFallback>
               </Avatar>
-              <Button variant="outline" size="sm" onClick={loadNewAvatar}>
+              <Button variant="outline" size="sm" onClick={() => loadNewAvatar(editingPlayer?._id)}>
                 <RefreshCw className="size-4 mr-2" />
                 New Cat
               </Button>
