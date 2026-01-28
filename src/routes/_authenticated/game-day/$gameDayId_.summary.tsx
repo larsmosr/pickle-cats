@@ -24,18 +24,35 @@ function SummaryPage() {
   const summaryRef = useRef<HTMLDivElement>(null)
   const [isDownloading, setIsDownloading] = useState(false)
   const [isSharing, setIsSharing] = useState(false)
+  const [isExporting, setIsExporting] = useState(false)
 
   const { data } = useSuspenseQuery(
     convexQuery(api.games.getGameDayStats, { gameDayId: gameDayId as Id<'gameDays'> }),
   )
 
+  async function captureImage() {
+    if (!summaryRef.current) return null
+    // Switch to export mode (no card styling)
+    setIsExporting(true)
+    // Wait for re-render
+    await new Promise((resolve) => setTimeout(resolve, 50))
+    try {
+      const dataUrl = await generateSummaryImage(summaryRef.current)
+      return dataUrl
+    } finally {
+      setIsExporting(false)
+    }
+  }
+
   async function handleDownload() {
     if (!summaryRef.current || !data) return
     setIsDownloading(true)
     try {
-      const dataUrl = await generateSummaryImage(summaryRef.current)
-      const filename = `pickle-cats-${data.gameDay.date}.png`
-      downloadImage(dataUrl, filename)
+      const dataUrl = await captureImage()
+      if (dataUrl) {
+        const filename = `pickle-cats-${data.gameDay.date}.png`
+        downloadImage(dataUrl, filename)
+      }
     } catch (error) {
       console.error('Failed to generate image:', error)
     } finally {
@@ -47,11 +64,13 @@ function SummaryPage() {
     if (!summaryRef.current || !data) return
     setIsSharing(true)
     try {
-      const dataUrl = await generateSummaryImage(summaryRef.current)
-      const filename = `pickle-cats-${data.gameDay.date}.png`
-      const title = `Pickle Cats - ${format(new Date(data.gameDay.date), 'MMMM d, yyyy')}`
-      const text = `${data.totalGames} games played${data.mvp ? ` • MVP: ${data.mvp.player.name}` : ''}`
-      await shareImage(dataUrl, filename, title, text)
+      const dataUrl = await captureImage()
+      if (dataUrl) {
+        const filename = `pickle-cats-${data.gameDay.date}.png`
+        const title = `Pickle Cats - ${format(new Date(data.gameDay.date), 'MMMM d, yyyy')}`
+        const text = `${data.totalGames} games played${data.mvp ? ` • MVP: ${data.mvp.player.name}` : ''}`
+        await shareImage(dataUrl, filename, title, text)
+      }
     } catch (error) {
       console.error('Failed to share image:', error)
     } finally {
@@ -82,12 +101,12 @@ function SummaryPage() {
         {/* Downloadable Summary Card - 9:16 portrait format with light purple theme */}
         <div
           ref={summaryRef}
-          className="mx-auto rounded-3xl overflow-hidden"
+          className={isExporting ? 'mx-auto' : 'mx-auto rounded-3xl overflow-hidden'}
           style={{
             width: '360px',
             minHeight: '640px',
             background: 'linear-gradient(135deg, #ebe5f5 0%, #e0d8f0 100%)',
-            padding: '32px 24px',
+            padding: isExporting ? '20px' : '32px 24px',
             display: 'flex',
             flexDirection: 'column',
           }}
