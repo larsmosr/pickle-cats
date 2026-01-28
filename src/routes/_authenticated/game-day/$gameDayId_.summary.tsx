@@ -64,7 +64,7 @@ function SummaryPage() {
       const dataUrl = await captureImage()
       if (dataUrl) {
         const filename = `pickle-cats-${data.gameDay.date}.png`
-        downloadImage(dataUrl, filename)
+        await downloadImage(dataUrl, filename)
       }
     } catch (error) {
       console.error('Failed to generate image:', error)
