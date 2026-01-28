@@ -48,7 +48,11 @@ function LoginPage() {
     <div className="min-h-dvh flex items-center justify-center p-4 bg-background">
       <Card className="w-full max-w-sm">
         <CardHeader className="text-center">
-          <div className="text-4xl mb-2">🐱</div>
+          <img
+            src="/app-logo.png"
+            alt="Pickle Cats"
+            className="w-24 h-24 mx-auto mb-2 object-contain"
+          />
           <CardTitle className="text-2xl">Pickle Cats</CardTitle>
         </CardHeader>
         <CardContent>

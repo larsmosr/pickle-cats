@@ -25,7 +25,7 @@ function AuthenticatedLayout() {
     <div className="min-h-dvh bg-background flex flex-col">
       <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between">
         <h1 className="text-lg font-semibold flex items-center gap-2">
-          <span>🐱</span>
+          <img src="/app-logo.png" alt="" className="w-6 h-6 object-contain" />
           <span>Pickle Cats</span>
         </h1>
         <Button variant="ghost" size="icon-sm" onClick={handleLogout}>
