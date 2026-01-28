@@ -1,13 +1,19 @@
 // src/routes/_authenticated.tsx
-import { createFileRoute, Outlet, useNavigate } from "@tanstack/react-router";
-import { isAuthenticated, clearAuthToken } from "@/lib/auth";
+import {
+  createFileRoute,
+  Link,
+  Outlet,
+  useNavigate,
+} from "@tanstack/react-router";
+import { isAuthenticated, logout } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { LogOut } from "lucide-react";
 
 export const Route = createFileRoute("/_authenticated")({
   component: AuthenticatedLayout,
-  beforeLoad: () => {
-    if (!isAuthenticated()) {
+  beforeLoad: async () => {
+    const authenticated = await isAuthenticated();
+    if (!authenticated) {
       throw { redirect: { to: "/" } };
     }
   },
@@ -16,25 +22,30 @@ export const Route = createFileRoute("/_authenticated")({
 function AuthenticatedLayout() {
   const navigate = useNavigate();
 
-  function handleLogout() {
-    clearAuthToken();
+  async function handleLogout() {
+    await logout();
     navigate({ to: "/" });
   }
 
   return (
-    <div className="min-h-dvh bg-background flex flex-col">
-      <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between">
-        <h1 className="text-lg font-semibold flex items-center gap-2">
-          <img src="/app-logo.png" alt="" className="w-6 h-6 object-contain" />
-          <span>Pickle Cats</span>
-        </h1>
-        <Button variant="ghost" size="icon-sm" onClick={handleLogout}>
-          <LogOut className="size-4" />
-        </Button>
-      </header>
-      <main className="flex-1 flex flex-col">
-        <Outlet />
-      </main>
+    <div className="min-h-dvh bg-background flex flex-col items-center lg:py-8 lg:px-4">
+      <div className="w-full max-w-2xl flex flex-col min-h-dvh lg:min-h-0 lg:rounded-xl lg:border lg:border-border lg:shadow-lg lg:bg-card lg:overflow-hidden">
+        <header className="sticky top-0 z-10 bg-background/80 backdrop-blur-sm border-b border-border px-4 py-3 flex items-center justify-between lg:bg-card/80">
+          <Link to="/groups">
+            <img
+              src="/app-logo.png"
+              alt="Pickle Cats"
+              className="w-10 h-10 object-contain"
+            />
+          </Link>
+          <Button variant="ghost" size="icon-sm" onClick={handleLogout}>
+            <LogOut className="size-4" />
+          </Button>
+        </header>
+        <main className="flex-1 flex flex-col">
+          <Outlet />
+        </main>
+      </div>
     </div>
   );
 }

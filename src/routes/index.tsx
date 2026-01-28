@@ -1,17 +1,16 @@
 // src/routes/index.tsx
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMutation } from "convex/react";
 import { useState } from "react";
-import { api } from "../../convex/_generated/api";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { isAuthenticated, setAuthToken } from "@/lib/auth";
+import { isAuthenticated, login } from "@/lib/auth";
 
 export const Route = createFileRoute("/")({
   component: LoginPage,
-  beforeLoad: () => {
-    if (isAuthenticated()) {
+  beforeLoad: async () => {
+    const authenticated = await isAuthenticated();
+    if (authenticated) {
       throw { redirect: { to: "/groups" } };
     }
   },
@@ -22,7 +21,6 @@ function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const checkPassword = useMutation(api.auth.checkPassword);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,9 +28,8 @@ function LoginPage() {
     setIsLoading(true);
 
     try {
-      const result = await checkPassword({ password });
-      if (result.success && result.token) {
-        setAuthToken(result.token);
+      const result = await login({ data: { password } });
+      if (result.success) {
         navigate({ to: "/groups" });
       } else {
         setError("Incorrect password");
@@ -51,9 +48,8 @@ function LoginPage() {
           <img
             src="/app-logo.png"
             alt="Pickle Cats"
-            className="w-24 h-24 mx-auto mb-2 object-contain"
+            className="w-32 h-32 mx-auto object-contain"
           />
-          <CardTitle className="text-2xl">Pickle Cats</CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-4">
@@ -68,7 +64,7 @@ function LoginPage() {
               <p className="text-destructive text-sm text-center">{error}</p>
             )}
             <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? "..." : "Enter"}
+              {isLoading ? "Loading..." : "Login"}
             </Button>
           </form>
         </CardContent>
