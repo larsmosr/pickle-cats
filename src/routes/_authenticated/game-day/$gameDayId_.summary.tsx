@@ -26,9 +26,7 @@ function SummaryPage() {
   const [isSharing, setIsSharing] = useState(false)
   const [isExporting, setIsExporting] = useState(false)
 
-  const { data } = useSuspenseQuery(
-    convexQuery(api.games.getGameDayStats, { gameDayId: gameDayId as Id<'gameDays'> }),
-  )
+  const { data } = useSuspenseQuery(convexQuery(api.games.getGameDayStats, { gameDayId: gameDayId as Id<'gameDays'> }))
 
   async function captureImage() {
     if (!summaryRef.current) return null
@@ -141,9 +139,7 @@ function SummaryPage() {
                 marginBottom: '20px',
               }}
             >
-              <p style={{ fontSize: '28px', fontWeight: 700, color: '#3d3654' }}>
-                {data.totalGames} Games Played
-              </p>
+              <p style={{ fontSize: '28px', fontWeight: 700, color: '#3d3654' }}>{data.totalGames} Games Played</p>
               {data.mvp && (
                 <div
                   style={{

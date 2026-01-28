@@ -48,6 +48,20 @@ export const remove = mutation({
   },
 });
 
+export const update = mutation({
+  args: {
+    id: v.id("games"),
+    team1Score: v.number(),
+    team2Score: v.number(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      team1Score: args.team1Score,
+      team2Score: args.team2Score,
+    });
+  },
+});
+
 // Stats query for leaderboard
 export const getStats = query({
   args: {

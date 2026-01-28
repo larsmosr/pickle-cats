@@ -63,18 +63,6 @@ export const create = mutation({
     attendeeIds: v.array(v.id("players")),
   },
   handler: async (ctx, args) => {
-    // Check if game day already exists for this date
-    const existing = await ctx.db
-      .query("gameDays")
-      .withIndex("by_group_and_date", (q) =>
-        q.eq("groupId", args.groupId).eq("date", args.date)
-      )
-      .first();
-
-    if (existing) {
-      throw new Error("A game day already exists for this date");
-    }
-
     const id = await ctx.db.insert("gameDays", {
       groupId: args.groupId,
       date: args.date,
