@@ -121,10 +121,11 @@ function ActiveGameDayPage() {
   }
 
   async function handleSubmitGame() {
-    if (!matchup || !team1Score || !team2Score) return
+    if (!matchup) return
 
-    const score1 = Number.parseInt(team1Score, 10)
-    const score2 = Number.parseInt(team2Score, 10)
+    // Empty inputs default to 0 (as shown in placeholder)
+    const score1 = team1Score === '' ? 0 : Number.parseInt(team1Score, 10)
+    const score2 = team2Score === '' ? 0 : Number.parseInt(team2Score, 10)
 
     if (isNaN(score1) || isNaN(score2)) return
 
@@ -217,7 +218,11 @@ function ActiveGameDayPage() {
     )
   }
 
-  const canSubmit = matchup && matchup.team1.length > 0 && matchup.team2.length > 0 && team1Score && team2Score
+  // Empty inputs default to 0, scores must be different (no ties)
+  const score1 = team1Score === '' ? 0 : Number.parseInt(team1Score, 10)
+  const score2 = team2Score === '' ? 0 : Number.parseInt(team2Score, 10)
+  const scoresValid = !isNaN(score1) && !isNaN(score2) && score1 !== score2
+  const canSubmit = matchup && matchup.team1.length > 0 && matchup.team2.length > 0 && scoresValid
 
   return (
     <div className="flex-1 flex flex-col pb-24 relative">
@@ -612,7 +617,7 @@ function ActiveGameDayPage() {
             <DrawerFooter>
               <Button
                 onClick={handleSaveGameEdit}
-                disabled={editTeam1Score === '' || editTeam2Score === '' || isSavingEdit}
+                disabled={editTeam1Score === '' || editTeam2Score === '' || editTeam1Score === editTeam2Score || isSavingEdit}
               >
                 <Check className="size-4 mr-2" />
                 {isSavingEdit ? 'Saving...' : 'Save Changes'}
