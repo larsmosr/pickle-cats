@@ -1,5 +1,5 @@
-import { defineSchema, defineTable } from "convex/server";
-import { v } from "convex/values";
+import { defineSchema, defineTable } from 'convex/server'
+import { v } from 'convex/values'
 
 export default defineSchema({
   groups: defineTable({
@@ -8,30 +8,30 @@ export default defineSchema({
   }),
 
   players: defineTable({
-    groupId: v.id("groups"),
+    groupId: v.id('groups'),
     name: v.string(),
     avatarUrl: v.string(),
     createdAt: v.number(),
-  }).index("by_group", ["groupId"]),
+  }).index('by_group', ['groupId']),
 
   gameDays: defineTable({
-    groupId: v.id("groups"),
+    groupId: v.id('groups'),
     date: v.string(),
-    attendeeIds: v.array(v.id("players")),
+    attendeeIds: v.array(v.id('players')),
     isComplete: v.boolean(),
-    mode: v.union(v.literal("auto_rotation"), v.literal("open_play")),
+    mode: v.optional(v.union(v.literal('auto_rotation'), v.literal('open_play'))),
     createdAt: v.number(),
   })
-    .index("by_group", ["groupId"])
-    .index("by_group_and_date", ["groupId", "date"]),
+    .index('by_group', ['groupId'])
+    .index('by_group_and_date', ['groupId', 'date']),
 
   games: defineTable({
-    gameDayId: v.id("gameDays"),
-    team1Ids: v.array(v.id("players")),
-    team2Ids: v.array(v.id("players")),
+    gameDayId: v.id('gameDays'),
+    team1Ids: v.array(v.id('players')),
+    team2Ids: v.array(v.id('players')),
     team1Score: v.number(),
     team2Score: v.number(),
     gameNumber: v.number(),
     createdAt: v.number(),
-  }).index("by_game_day", ["gameDayId"]),
-});
+  }).index('by_game_day', ['gameDayId']),
+})
