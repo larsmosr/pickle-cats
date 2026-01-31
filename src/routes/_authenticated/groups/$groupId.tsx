@@ -508,7 +508,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
                   key="auto_rotation"
                   type="button"
                   className={cn(
-                    'p-4 rounded-xl cursor-pointer transition-colors border-2',
+                    'p-4 w-full rounded-xl cursor-pointer transition-colors border-2',
                     selectedMode === 'auto_rotation'
                       ? 'border-primary bg-primary/10'
                       : 'border-border hover:border-primary/50',
@@ -522,7 +522,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
                   key="open_play"
                   type="button"
                   className={cn(
-                    'p-4 rounded-xl cursor-pointer transition-colors border-2',
+                    'p-4 w-full rounded-xl cursor-pointer transition-colors border-2',
                     selectedMode === 'open_play'
                       ? 'border-primary bg-primary/10'
                       : 'border-border hover:border-primary/50',

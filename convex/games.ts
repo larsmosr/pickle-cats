@@ -233,8 +233,8 @@ export const getGameDayStats = query({
     const validStats = stats.filter(Boolean).filter((s) => s!.gamesPlayed > 0)
     validStats.sort((a, b) => b!.adjustedWinPercentage - a!.adjustedWinPercentage)
 
-    // Find MVP (highest adjusted win % with min 2 games)
-    const mvpCandidates = validStats.filter((s) => s!.gamesPlayed >= 2)
+    // Find MVP (highest adjusted win % with min 1 game)
+    const mvpCandidates = validStats.filter((s) => s!.gamesPlayed >= 1)
     const mvp = mvpCandidates[0] ?? null
 
     return {
