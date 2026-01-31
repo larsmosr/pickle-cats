@@ -4,7 +4,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
 import { useMutation } from 'convex/react'
 import { format } from 'date-fns'
-import { ArrowLeft, ArrowLeftRight, Check, Pencil, Trash2 } from 'lucide-react'
+import { ArrowLeft, ArrowLeftRight, Check, Pencil, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useMemo, useState } from 'react'
 import { DecorativeBackground } from '@/components/decorative-background'
 import { PlayerCard } from '@/components/player-card'
@@ -74,6 +74,11 @@ function ActiveGameDayPage() {
   const [playerToSwap, setPlayerToSwap] = useState<Player | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
+  // Open Play state
+  const [selectedPlayers, setSelectedPlayers] = useState<Player[]>([])
+  const [playerPickerOpen, setPlayerPickerOpen] = useState(false)
+  const [slotToFill, setSlotToFill] = useState<number | null>(null) // 0-3 for team positions
+
   // Edit game state
   const [editDrawerOpen, setEditDrawerOpen] = useState(false)
   const [editingGame, setEditingGame] = useState<Game | null>(null)
@@ -104,6 +109,8 @@ function ActiveGameDayPage() {
       const result = generateMatchup(attendees, games, isDoubles)
       setMatchup(result)
     }
+    // Reset Open Play state when mode changes
+    setSelectedPlayers([])
   }, [isDoubles])
 
   function handleSwapClick(player: Player) {
@@ -120,8 +127,48 @@ function ActiveGameDayPage() {
     setPlayerToSwap(null)
   }
 
+  // Open Play helper functions
+  function handleSlotClick(slotIndex: number) {
+    setSlotToFill(slotIndex)
+    setPlayerPickerOpen(true)
+  }
+
+  function handlePlayerSelect(player: Player) {
+    if (slotToFill === null) return
+
+    const newSelected = [...selectedPlayers]
+    newSelected[slotToFill] = player
+    setSelectedPlayers(newSelected)
+    setPlayerPickerOpen(false)
+    setSlotToFill(null)
+  }
+
+  function resetOpenPlayState() {
+    setSelectedPlayers([])
+    setTeam1Score('')
+    setTeam2Score('')
+  }
+
   async function handleSubmitGame() {
-    if (!matchup) return
+    const isOpenPlay = gameDay?.mode === 'open_play'
+
+    // For Open Play, get team players from selectedPlayers array
+    // For Auto Rotation, use existing matchup state
+    let team1Players: Player[]
+    let team2Players: Player[]
+
+    if (isOpenPlay) {
+      const playersPerTeam = isDoubles ? 2 : 1
+      team1Players = selectedPlayers.slice(0, playersPerTeam).filter(Boolean)
+      team2Players = selectedPlayers.slice(playersPerTeam, playersPerTeam * 2).filter(Boolean)
+
+      // Ensure we have enough players for both teams
+      if (team1Players.length !== playersPerTeam || team2Players.length !== playersPerTeam) return
+    } else {
+      if (!matchup) return
+      team1Players = matchup.team1
+      team2Players = matchup.team2
+    }
 
     // Empty inputs default to 0 (as shown in placeholder)
     const score1 = team1Score === '' ? 0 : Number.parseInt(team1Score, 10)
@@ -133,28 +180,33 @@ function ActiveGameDayPage() {
     try {
       await createGame({
         gameDayId: gameDayId as Id<'gameDays'>,
-        team1Ids: matchup.team1.map((p) => p._id),
-        team2Ids: matchup.team2.map((p) => p._id),
+        team1Ids: team1Players.map((p) => p._id),
+        team2Ids: team2Players.map((p) => p._id),
         team1Score: score1,
         team2Score: score2,
       })
 
-      // Reset for next game
-      setTeam1Score('')
-      setTeam2Score('')
+      if (isOpenPlay) {
+        // Reset Open Play state for next game
+        resetOpenPlayState()
+      } else {
+        // Reset for next game
+        setTeam1Score('')
+        setTeam2Score('')
 
-      // Generate new matchup (will update on next render with new games)
-      const newGames = [
-        ...games,
-        {
-          team1Ids: matchup.team1.map((p) => p._id),
-          team2Ids: matchup.team2.map((p) => p._id),
-          team1Score: score1,
-          team2Score: score2,
-        } as Game,
-      ]
-      const result = generateMatchup(attendees, newGames, isDoubles)
-      setMatchup(result)
+        // Generate new matchup (will update on next render with new games)
+        const newGames = [
+          ...games,
+          {
+            team1Ids: team1Players.map((p) => p._id),
+            team2Ids: team2Players.map((p) => p._id),
+            team1Score: score1,
+            team2Score: score2,
+          } as Game,
+        ]
+        const result = generateMatchup(attendees, newGames, isDoubles)
+        setMatchup(result)
+      }
     } finally {
       setIsSubmitting(false)
     }
@@ -222,7 +274,150 @@ function ActiveGameDayPage() {
   const score1 = team1Score === '' ? 0 : Number.parseInt(team1Score, 10)
   const score2 = team2Score === '' ? 0 : Number.parseInt(team2Score, 10)
   const scoresValid = !isNaN(score1) && !isNaN(score2) && score1 !== score2
-  const canSubmit = matchup && matchup.team1.length > 0 && matchup.team2.length > 0 && scoresValid
+
+  const isOpenPlay = gameDay?.mode === 'open_play'
+  const playersPerTeam = isDoubles ? 2 : 1
+  const totalSlotsNeeded = playersPerTeam * 2
+
+  // For Open Play, check if all slots are filled
+  const openPlayTeamsValid =
+    selectedPlayers.filter(Boolean).length === totalSlotsNeeded &&
+    new Set(selectedPlayers.map((p) => p?._id)).size === totalSlotsNeeded // No duplicates
+
+  const canSubmit = isOpenPlay
+    ? openPlayTeamsValid && scoresValid
+    : matchup && matchup.team1.length > 0 && matchup.team2.length > 0 && scoresValid
+
+  // OpenPlayMatchupCard component for Open Play mode
+  function OpenPlayMatchupCard() {
+    const team1Slots = Array.from({ length: playersPerTeam }, (_, i) => selectedPlayers[i] ?? null)
+    const team2Slots = Array.from({ length: playersPerTeam }, (_, i) => selectedPlayers[playersPerTeam + i] ?? null)
+
+    return (
+      <Card className="shadow-md border-0 bg-card/90 backdrop-blur-sm">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-center text-sm text-muted-foreground font-medium">
+            Game {games.length + 1}
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+            {/* Team 1 */}
+            <div className="space-y-2">
+              {team1Slots.map((player, index) => (
+                <button
+                  key={player?._id ?? `slot-${index}`}
+                  type="button"
+                  className={cn(
+                    'flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl cursor-pointer transition-colors',
+                    player ? 'bg-secondary/60 hover:bg-secondary' : 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50',
+                  )}
+                  onClick={() => handleSlotClick(index)}
+                >
+                  {player ? (
+                    <>
+                      <Avatar size="sm">
+                        <AvatarImage src={player.avatarUrl} />
+                        <AvatarFallback className="bg-warm text-warm-foreground">
+                          {player.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium truncate">{player.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="size-8 rounded-full bg-muted/50 flex items-center justify-center">
+                        <Plus className="size-4 text-muted-foreground" />
+                      </div>
+                      <span className="text-sm text-muted-foreground">Tap to add</span>
+                    </>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            {/* VS */}
+            <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">VS</div>
+
+            {/* Team 2 */}
+            <div className="space-y-2">
+              {team2Slots.map((player, index) => (
+                <button
+                  key={player?._id ?? `slot-${playersPerTeam + index}`}
+                  type="button"
+                  className={cn(
+                    'flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl cursor-pointer transition-colors',
+                    player ? 'bg-warm/50 hover:bg-warm/70' : 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50',
+                  )}
+                  onClick={() => handleSlotClick(playersPerTeam + index)}
+                >
+                  {player ? (
+                    <>
+                      <Avatar size="sm">
+                        <AvatarImage src={player.avatarUrl} />
+                        <AvatarFallback className="bg-secondary text-secondary-foreground">
+                          {player.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium truncate">{player.name}</span>
+                    </>
+                  ) : (
+                    <>
+                      <div className="size-8 rounded-full bg-muted/50 flex items-center justify-center">
+                        <Plus className="size-4 text-muted-foreground" />
+                      </div>
+                      <span className="text-sm text-muted-foreground">Tap to add</span>
+                    </>
+                  )}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Score Entry */}
+          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+            <Input
+              type="number"
+              placeholder="0"
+              min="0"
+              className="text-center text-2xl h-11.5 w-full"
+              value={team1Score}
+              onChange={(e) => {
+                const val = e.target.value
+                if (val === '' || Number.parseInt(val, 10) >= 0) {
+                  setTeam1Score(val)
+                }
+              }}
+            />
+            <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">-</div>
+            <Input
+              type="number"
+              placeholder="0"
+              min="0"
+              className="text-center text-2xl h-11.5 w-full"
+              value={team2Score}
+              onChange={(e) => {
+                const val = e.target.value
+                if (val === '' || Number.parseInt(val, 10) >= 0) {
+                  setTeam2Score(val)
+                }
+              }}
+            />
+          </div>
+
+          <Button
+            className="w-full rounded-2xl bg-foreground text-background hover:bg-foreground/90 shadow-md h-12"
+            size="lg"
+            disabled={!canSubmit || isSubmitting}
+            onClick={handleSubmitGame}
+          >
+            <Check className="size-5 mr-2" />
+            {isSubmitting ? 'Saving...' : 'Submit Game'}
+          </Button>
+        </CardContent>
+      </Card>
+    )
+  }
 
   return (
     <div className="flex-1 flex flex-col pb-24 relative">
@@ -276,102 +471,112 @@ function ActiveGameDayPage() {
           </Label>
         </div>
 
-        {/* Current Matchup */}
-        {matchup && matchup.team1.length > 0 && (
-          <Card className="shadow-md border-0 bg-card/90 backdrop-blur-sm">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-center text-sm text-muted-foreground font-medium">Game {games.length + 1}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-                {/* Team 1 */}
-                <div className="space-y-2">
-                  {matchup.team1.map((player) => (
-                    <button
-                      key={player._id}
-                      type="button"
-                      className="flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl bg-secondary/60 cursor-pointer hover:bg-secondary transition-colors"
-                      onClick={() => handleSwapClick(player)}
-                    >
-                      <Avatar size="sm">
-                        <AvatarImage src={player.avatarUrl} />
-                        <AvatarFallback className="bg-warm text-warm-foreground">{player.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-medium truncate">{player.name}</span>
-                      <ArrowLeftRight className="size-3 ml-auto text-muted-foreground" />
-                    </button>
-                  ))}
+        {/* Current Matchup - conditional rendering based on mode */}
+        {isOpenPlay ? (
+          <OpenPlayMatchupCard />
+        ) : (
+          matchup && matchup.team1.length > 0 && (
+            <Card className="shadow-md border-0 bg-card/90 backdrop-blur-sm">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-center text-sm text-muted-foreground font-medium">
+                  Game {games.length + 1}
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                  {/* Team 1 */}
+                  <div className="space-y-2">
+                    {matchup.team1.map((player) => (
+                      <button
+                        key={player._id}
+                        type="button"
+                        className="flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl bg-secondary/60 cursor-pointer hover:bg-secondary transition-colors"
+                        onClick={() => handleSwapClick(player)}
+                      >
+                        <Avatar size="sm">
+                          <AvatarImage src={player.avatarUrl} />
+                          <AvatarFallback className="bg-warm text-warm-foreground">
+                            {player.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium truncate">{player.name}</span>
+                        <ArrowLeftRight className="size-3 ml-auto text-muted-foreground" />
+                      </button>
+                    ))}
+                  </div>
+
+                  {/* VS */}
+                  <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">VS</div>
+
+                  {/* Team 2 */}
+                  <div className="space-y-2">
+                    {matchup.team2.map((player) => (
+                      <button
+                        key={player._id}
+                        type="button"
+                        className="flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl bg-warm/50 cursor-pointer hover:bg-warm/70 transition-colors"
+                        onClick={() => handleSwapClick(player)}
+                      >
+                        <Avatar size="sm">
+                          <AvatarImage src={player.avatarUrl} />
+                          <AvatarFallback className="bg-secondary text-secondary-foreground">
+                            {player.name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium truncate">{player.name}</span>
+                        <ArrowLeftRight className="size-3 ml-auto text-muted-foreground" />
+                      </button>
+                    ))}
+                  </div>
                 </div>
 
-                {/* VS */}
-                <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">VS</div>
-
-                {/* Team 2 */}
-                <div className="space-y-2">
-                  {matchup.team2.map((player) => (
-                    <button
-                      key={player._id}
-                      type="button"
-                      className="flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl bg-warm/50 cursor-pointer hover:bg-warm/70 transition-colors"
-                      onClick={() => handleSwapClick(player)}
-                    >
-                      <Avatar size="sm">
-                        <AvatarImage src={player.avatarUrl} />
-                        <AvatarFallback className="bg-secondary text-secondary-foreground">{player.name.charAt(0)}</AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-medium truncate">{player.name}</span>
-                      <ArrowLeftRight className="size-3 ml-auto text-muted-foreground" />
-                    </button>
-                  ))}
+                {/* Score Entry */}
+                <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    className="text-center text-2xl h-11.5 w-full"
+                    value={team1Score}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '' || Number.parseInt(val, 10) >= 0) {
+                        setTeam1Score(val)
+                      }
+                    }}
+                  />
+                  <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">-</div>
+                  <Input
+                    type="number"
+                    placeholder="0"
+                    min="0"
+                    className="text-center text-2xl h-11.5 w-full"
+                    value={team2Score}
+                    onChange={(e) => {
+                      const val = e.target.value
+                      if (val === '' || Number.parseInt(val, 10) >= 0) {
+                        setTeam2Score(val)
+                      }
+                    }}
+                  />
                 </div>
-              </div>
 
-              {/* Score Entry */}
-              <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-                <Input
-                  type="number"
-                  placeholder="0"
-                  min="0"
-                  className="text-center text-2xl h-11.5 w-full"
-                  value={team1Score}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    if (val === '' || Number.parseInt(val, 10) >= 0) {
-                      setTeam1Score(val)
-                    }
-                  }}
-                />
-                <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">-</div>
-                <Input
-                  type="number"
-                  placeholder="0"
-                  min="0"
-                  className="text-center text-2xl h-11.5 w-full"
-                  value={team2Score}
-                  onChange={(e) => {
-                    const val = e.target.value
-                    if (val === '' || Number.parseInt(val, 10) >= 0) {
-                      setTeam2Score(val)
-                    }
-                  }}
-                />
-              </div>
-
-              <Button
-                className="w-full rounded-2xl bg-foreground text-background hover:bg-foreground/90 shadow-md h-12"
-                size="lg"
-                disabled={!canSubmit || isSubmitting}
-                onClick={handleSubmitGame}
-              >
-                <Check className="size-5 mr-2" />
-                {isSubmitting ? 'Saving...' : 'Submit Game'}
-              </Button>
-            </CardContent>
-          </Card>
+                <Button
+                  className="w-full rounded-2xl bg-foreground text-background hover:bg-foreground/90 shadow-md h-12"
+                  size="lg"
+                  disabled={!canSubmit || isSubmitting}
+                  onClick={handleSubmitGame}
+                >
+                  <Check className="size-5 mr-2" />
+                  {isSubmitting ? 'Saving...' : 'Submit Game'}
+                </Button>
+              </CardContent>
+            </Card>
+          )
         )}
 
-        {/* Sitting Out */}
-        {matchup && matchup.sittingOut.length > 0 && (
+        {/* Sitting Out - hide for Open Play */}
+        {!isOpenPlay && matchup && matchup.sittingOut.length > 0 && (
           <div>
             <h3 className="text-sm font-medium text-muted-foreground mb-3">Sitting Out</h3>
             <div className="flex gap-2 flex-wrap">
@@ -617,7 +822,9 @@ function ActiveGameDayPage() {
             <DrawerFooter>
               <Button
                 onClick={handleSaveGameEdit}
-                disabled={editTeam1Score === '' || editTeam2Score === '' || editTeam1Score === editTeam2Score || isSavingEdit}
+                disabled={
+                  editTeam1Score === '' || editTeam2Score === '' || editTeam1Score === editTeam2Score || isSavingEdit
+                }
               >
                 <Check className="size-4 mr-2" />
                 {isSavingEdit ? 'Saving...' : 'Save Changes'}
@@ -626,6 +833,29 @@ function ActiveGameDayPage() {
                 <Trash2 className="size-4 mr-2" />
                 Delete Game
               </Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
+          </div>
+        </DrawerContent>
+      </Drawer>
+
+      {/* Open Play Player Picker Drawer */}
+      <Drawer open={playerPickerOpen} onOpenChange={setPlayerPickerOpen}>
+        <DrawerContent>
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>Select Player</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4 space-y-2 max-h-[50vh] overflow-y-auto">
+              {attendees
+                .filter((player) => !selectedPlayers.some((p) => p?._id === player._id))
+                .map((player) => (
+                  <PlayerCard key={player._id} player={player} onClick={() => handlePlayerSelect(player)} />
+                ))}
+            </div>
+            <DrawerFooter>
               <DrawerClose asChild>
                 <Button variant="outline">Cancel</Button>
               </DrawerClose>
