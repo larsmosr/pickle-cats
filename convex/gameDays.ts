@@ -61,6 +61,7 @@ export const create = mutation({
     groupId: v.id("groups"),
     date: v.string(),
     attendeeIds: v.array(v.id("players")),
+    mode: v.union(v.literal("auto_rotation"), v.literal("open_play")),
   },
   handler: async (ctx, args) => {
     const id = await ctx.db.insert("gameDays", {
@@ -68,6 +69,7 @@ export const create = mutation({
       date: args.date,
       attendeeIds: args.attendeeIds,
       isComplete: false,
+      mode: args.mode,
       createdAt: Date.now(),
     });
     return id;
