@@ -361,7 +361,7 @@ function ActiveGameDayPage() {
                       key={player?._id ?? `slot-${index}`}
                       type="button"
                       className={cn(
-                        'flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl cursor-pointer transition-colors',
+                        'flex w-full items-center gap-1.5 p-1.5 rounded-xl cursor-pointer transition-colors',
                         player
                           ? 'bg-secondary/60 hover:bg-secondary'
                           : 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50',
@@ -400,7 +400,7 @@ function ActiveGameDayPage() {
                       key={player?._id ?? `slot-${playersPerTeam + index}`}
                       type="button"
                       className={cn(
-                        'flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl cursor-pointer transition-colors',
+                        'flex w-full items-center gap-1.5 p-1.5 rounded-xl cursor-pointer transition-colors',
                         player
                           ? 'bg-warm/50 hover:bg-warm/70'
                           : 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50',
