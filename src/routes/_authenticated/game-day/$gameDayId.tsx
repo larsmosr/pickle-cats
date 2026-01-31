@@ -288,136 +288,9 @@ function ActiveGameDayPage() {
     ? openPlayTeamsValid && scoresValid
     : matchup && matchup.team1.length > 0 && matchup.team2.length > 0 && scoresValid
 
-  // OpenPlayMatchupCard component for Open Play mode
-  function OpenPlayMatchupCard() {
-    const team1Slots = Array.from({ length: playersPerTeam }, (_, i) => selectedPlayers[i] ?? null)
-    const team2Slots = Array.from({ length: playersPerTeam }, (_, i) => selectedPlayers[playersPerTeam + i] ?? null)
-
-    return (
-      <Card className="shadow-md border-0 bg-card/90 backdrop-blur-sm">
-        <CardHeader className="pb-2">
-          <CardTitle className="text-center text-sm text-muted-foreground font-medium">
-            Game {games.length + 1}
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-            {/* Team 1 */}
-            <div className="space-y-2">
-              {team1Slots.map((player, index) => (
-                <button
-                  key={player?._id ?? `slot-${index}`}
-                  type="button"
-                  className={cn(
-                    'flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl cursor-pointer transition-colors',
-                    player ? 'bg-secondary/60 hover:bg-secondary' : 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50',
-                  )}
-                  onClick={() => handleSlotClick(index)}
-                >
-                  {player ? (
-                    <>
-                      <Avatar size="sm">
-                        <AvatarImage src={player.avatarUrl} />
-                        <AvatarFallback className="bg-warm text-warm-foreground">
-                          {player.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-medium truncate">{player.name}</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="size-8 rounded-full bg-muted/50 flex items-center justify-center">
-                        <Plus className="size-4 text-muted-foreground" />
-                      </div>
-                      <span className="text-sm text-muted-foreground">Tap to add</span>
-                    </>
-                  )}
-                </button>
-              ))}
-            </div>
-
-            {/* VS */}
-            <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">VS</div>
-
-            {/* Team 2 */}
-            <div className="space-y-2">
-              {team2Slots.map((player, index) => (
-                <button
-                  key={player?._id ?? `slot-${playersPerTeam + index}`}
-                  type="button"
-                  className={cn(
-                    'flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl cursor-pointer transition-colors',
-                    player ? 'bg-warm/50 hover:bg-warm/70' : 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50',
-                  )}
-                  onClick={() => handleSlotClick(playersPerTeam + index)}
-                >
-                  {player ? (
-                    <>
-                      <Avatar size="sm">
-                        <AvatarImage src={player.avatarUrl} />
-                        <AvatarFallback className="bg-secondary text-secondary-foreground">
-                          {player.name.charAt(0)}
-                        </AvatarFallback>
-                      </Avatar>
-                      <span className="text-sm font-medium truncate">{player.name}</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="size-8 rounded-full bg-muted/50 flex items-center justify-center">
-                        <Plus className="size-4 text-muted-foreground" />
-                      </div>
-                      <span className="text-sm text-muted-foreground">Tap to add</span>
-                    </>
-                  )}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Score Entry */}
-          <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
-            <Input
-              type="number"
-              placeholder="0"
-              min="0"
-              className="text-center text-2xl h-11.5 w-full"
-              value={team1Score}
-              onChange={(e) => {
-                const val = e.target.value
-                if (val === '' || Number.parseInt(val, 10) >= 0) {
-                  setTeam1Score(val)
-                }
-              }}
-            />
-            <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">-</div>
-            <Input
-              type="number"
-              placeholder="0"
-              min="0"
-              className="text-center text-2xl h-11.5 w-full"
-              value={team2Score}
-              onChange={(e) => {
-                const val = e.target.value
-                if (val === '' || Number.parseInt(val, 10) >= 0) {
-                  setTeam2Score(val)
-                }
-              }}
-            />
-          </div>
-
-          <Button
-            className="w-full rounded-2xl bg-foreground text-background hover:bg-foreground/90 shadow-md h-12"
-            size="lg"
-            disabled={!canSubmit || isSubmitting}
-            onClick={handleSubmitGame}
-          >
-            <Check className="size-5 mr-2" />
-            {isSubmitting ? 'Saving...' : 'Submit Game'}
-          </Button>
-        </CardContent>
-      </Card>
-    )
-  }
+  // For Open Play mode, compute team slots
+  const team1Slots = Array.from({ length: playersPerTeam }, (_, i) => selectedPlayers[i] ?? null)
+  const team2Slots = Array.from({ length: playersPerTeam }, (_, i) => selectedPlayers[playersPerTeam + i] ?? null)
 
   return (
     <div className="flex-1 flex flex-col pb-24 relative">
@@ -473,9 +346,135 @@ function ActiveGameDayPage() {
 
         {/* Current Matchup - conditional rendering based on mode */}
         {isOpenPlay ? (
-          <OpenPlayMatchupCard />
+          <Card className="shadow-md border-0 bg-card/90 backdrop-blur-sm">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-center text-sm text-muted-foreground font-medium">
+                Game {games.length + 1}
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                {/* Team 1 */}
+                <div className="space-y-2">
+                  {team1Slots.map((player, index) => (
+                    <button
+                      key={player?._id ?? `slot-${index}`}
+                      type="button"
+                      className={cn(
+                        'flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl cursor-pointer transition-colors',
+                        player
+                          ? 'bg-secondary/60 hover:bg-secondary'
+                          : 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50',
+                      )}
+                      onClick={() => handleSlotClick(index)}
+                    >
+                      {player ? (
+                        <>
+                          <Avatar size="sm">
+                            <AvatarImage src={player.avatarUrl} />
+                            <AvatarFallback className="bg-warm text-warm-foreground">
+                              {player.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-medium truncate">{player.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="size-8 rounded-full bg-muted/50 flex items-center justify-center">
+                            <Plus className="size-4 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm text-muted-foreground">Tap to add</span>
+                        </>
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                {/* VS */}
+                <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">VS</div>
+
+                {/* Team 2 */}
+                <div className="space-y-2">
+                  {team2Slots.map((player, index) => (
+                    <button
+                      key={player?._id ?? `slot-${playersPerTeam + index}`}
+                      type="button"
+                      className={cn(
+                        'flex w-full items-center gap-2 p-2.5 pr-4 rounded-xl cursor-pointer transition-colors',
+                        player
+                          ? 'bg-warm/50 hover:bg-warm/70'
+                          : 'border-2 border-dashed border-muted-foreground/30 hover:border-muted-foreground/50',
+                      )}
+                      onClick={() => handleSlotClick(playersPerTeam + index)}
+                    >
+                      {player ? (
+                        <>
+                          <Avatar size="sm">
+                            <AvatarImage src={player.avatarUrl} />
+                            <AvatarFallback className="bg-secondary text-secondary-foreground">
+                              {player.name.charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <span className="text-sm font-medium truncate">{player.name}</span>
+                        </>
+                      ) : (
+                        <>
+                          <div className="size-8 rounded-full bg-muted/50 flex items-center justify-center">
+                            <Plus className="size-4 text-muted-foreground" />
+                          </div>
+                          <span className="text-sm text-muted-foreground">Tap to add</span>
+                        </>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Score Entry */}
+              <div className="grid grid-cols-[1fr_auto_1fr] gap-4 items-center">
+                <Input
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  className="text-center text-2xl h-11.5 w-full"
+                  value={team1Score}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === '' || Number.parseInt(val, 10) >= 0) {
+                      setTeam1Score(val)
+                    }
+                  }}
+                />
+                <div className="text-lg font-bold text-muted-foreground w-8 flex items-center justify-center">-</div>
+                <Input
+                  type="number"
+                  placeholder="0"
+                  min="0"
+                  className="text-center text-2xl h-11.5 w-full"
+                  value={team2Score}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (val === '' || Number.parseInt(val, 10) >= 0) {
+                      setTeam2Score(val)
+                    }
+                  }}
+                />
+              </div>
+
+              <Button
+                className="w-full rounded-2xl bg-foreground text-background hover:bg-foreground/90 shadow-md h-12"
+                size="lg"
+                disabled={!canSubmit || isSubmitting}
+                onClick={handleSubmitGame}
+              >
+                <Check className="size-5 mr-2" />
+                {isSubmitting ? 'Saving...' : 'Submit Game'}
+              </Button>
+            </CardContent>
+          </Card>
         ) : (
-          matchup && matchup.team1.length > 0 && (
+          matchup &&
+          matchup.team1.length > 0 && (
             <Card className="shadow-md border-0 bg-card/90 backdrop-blur-sm">
               <CardHeader className="pb-2">
                 <CardTitle className="text-center text-sm text-muted-foreground font-medium">
