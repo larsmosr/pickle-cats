@@ -437,7 +437,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
                     <p className="text-sm text-muted-foreground">{gameDay.gameCount} games played</p>
                   </div>
                   {gameDay.isComplete && (
-                    <span className="text-xs bg-warm text-warm-foreground px-2.5 py-1 rounded-full font-medium">
+                    <span className="text-xs bg-success text-success-foreground px-2.5 py-1 rounded-full font-medium">
                       Complete
                     </span>
                   )}
@@ -477,8 +477,9 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
             {step === 'attendees' && (
               <div className="p-4 space-y-2 overflow-y-auto max-h-[50vh]">
                 {players?.map((player) => (
-                  <div
+                  <button
                     key={player._id}
+                    type="button"
                     className={cn(
                       'flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors',
                       selectedAttendees.includes(player._id)
@@ -496,14 +497,16 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
                       <AvatarFallback>{player.name.charAt(0)}</AvatarFallback>
                     </Avatar>
                     <span className="font-medium">{player.name}</span>
-                  </div>
+                  </button>
                 ))}
               </div>
             )}
 
             {step === 'mode' && (
               <div className="p-4 space-y-3">
-                <div
+                <button
+                  key="auto_rotation"
+                  type="button"
                   className={cn(
                     'p-4 rounded-xl cursor-pointer transition-colors border-2',
                     selectedMode === 'auto_rotation'
@@ -514,8 +517,10 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
                 >
                   <div className="font-medium">Auto Rotation</div>
                   <div className="text-sm text-muted-foreground">Algorithm picks balanced matchups</div>
-                </div>
-                <div
+                </button>
+                <button
+                  key="open_play"
+                  type="button"
                   className={cn(
                     'p-4 rounded-xl cursor-pointer transition-colors border-2',
                     selectedMode === 'open_play'
@@ -526,7 +531,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
                 >
                   <div className="font-medium">Open Play</div>
                   <div className="text-sm text-muted-foreground">Log games freely as they happen</div>
-                </div>
+                </button>
               </div>
             )}
 
@@ -597,7 +602,7 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
     return multiplier * ((b[key] as number) - (a[key] as number))
   })
 
-  // Find the player with highest Score (Bayesian ranking) - they get the crown
+  // Find the player with highest Score (Bayesian Inference) - they get the crown
   const topScorerId = stats?.reduce((topId, stat) => {
     const top = stats.find((s) => s.player._id === topId)
     return !top || stat.adjustedWinPercentage > top.adjustedWinPercentage ? stat.player._id : topId
@@ -781,7 +786,7 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
 
       {sortedStats.length > 0 && (
         <p className="text-xs text-muted-foreground mt-3">
-          <span className="font-bold">Score</span> = Bayesian ranking (accounts for games played) •{' '}
+          <span className="font-bold">Score</span> = Bayesian Inference (ratings adjustment algorithm) •{' '}
           <span className="font-bold">W%</span> = Win rate • <span className="font-bold">W</span> = Wins •{' '}
           <span className="font-bold">L</span> = Losses • <span className="font-bold">+/-</span> = Point differential
         </p>

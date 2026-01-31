@@ -1,45 +1,45 @@
 // convex/games.ts
-import { v } from "convex/values";
-import { mutation, query } from "./_generated/server";
+import { v } from 'convex/values'
+import { mutation, query } from './_generated/server'
 
 // Bayesian average constants for ranking
 // C = confidence factor (games needed before trusting actual win rate)
 // M = assumed average win percentage for players with few games
-const BAYESIAN_C = 10;
-const BAYESIAN_M = 50;
+const BAYESIAN_C = 10
+const BAYESIAN_M = 50
 
 function calculateAdjustedWinPercentage(wins: number, gamesPlayed: number): number {
-  if (gamesPlayed === 0) return 0;
-  return ((wins + (BAYESIAN_C * BAYESIAN_M) / 100) / (gamesPlayed + BAYESIAN_C)) * 100;
+  if (gamesPlayed === 0) return 0
+  return ((wins + (BAYESIAN_C * BAYESIAN_M) / 100) / (gamesPlayed + BAYESIAN_C)) * 100
 }
 
 export const listByGameDay = query({
-  args: { gameDayId: v.id("gameDays") },
+  args: { gameDayId: v.id('gameDays') },
   handler: async (ctx, args) => {
     return await ctx.db
-      .query("games")
-      .withIndex("by_game_day", (q) => q.eq("gameDayId", args.gameDayId))
-      .order("asc")
-      .collect();
+      .query('games')
+      .withIndex('by_game_day', (q) => q.eq('gameDayId', args.gameDayId))
+      .order('asc')
+      .collect()
   },
-});
+})
 
 export const create = mutation({
   args: {
-    gameDayId: v.id("gameDays"),
-    team1Ids: v.array(v.id("players")),
-    team2Ids: v.array(v.id("players")),
+    gameDayId: v.id('gameDays'),
+    team1Ids: v.array(v.id('players')),
+    team2Ids: v.array(v.id('players')),
     team1Score: v.number(),
     team2Score: v.number(),
   },
   handler: async (ctx, args) => {
     // Get current game count to determine game number
     const existingGames = await ctx.db
-      .query("games")
-      .withIndex("by_game_day", (q) => q.eq("gameDayId", args.gameDayId))
-      .collect();
+      .query('games')
+      .withIndex('by_game_day', (q) => q.eq('gameDayId', args.gameDayId))
+      .collect()
 
-    const id = await ctx.db.insert("games", {
+    const id = await ctx.db.insert('games', {
       gameDayId: args.gameDayId,
       team1Ids: args.team1Ids,
       team2Ids: args.team2Ids,
@@ -47,21 +47,21 @@ export const create = mutation({
       team2Score: args.team2Score,
       gameNumber: existingGames.length + 1,
       createdAt: Date.now(),
-    });
-    return id;
+    })
+    return id
   },
-});
+})
 
 export const remove = mutation({
-  args: { id: v.id("games") },
+  args: { id: v.id('games') },
   handler: async (ctx, args) => {
-    await ctx.db.delete(args.id);
+    await ctx.db.delete(args.id)
   },
-});
+})
 
 export const update = mutation({
   args: {
-    id: v.id("games"),
+    id: v.id('games'),
     team1Score: v.number(),
     team2Score: v.number(),
   },
@@ -69,99 +69,96 @@ export const update = mutation({
     await ctx.db.patch(args.id, {
       team1Score: args.team1Score,
       team2Score: args.team2Score,
-    });
+    })
   },
-});
+})
 
 // Stats query for leaderboard
 export const getStats = query({
   args: {
-    groupId: v.id("groups"),
+    groupId: v.id('groups'),
     period: v.union(
-      v.object({ type: v.literal("date"), date: v.string() }),
-      v.object({ type: v.literal("days"), days: v.number() }),
-      v.object({ type: v.literal("month"), year: v.number(), month: v.number() }),
-      v.object({ type: v.literal("all") })
+      v.object({ type: v.literal('date'), date: v.string() }),
+      v.object({ type: v.literal('days'), days: v.number() }),
+      v.object({ type: v.literal('month'), year: v.number(), month: v.number() }),
+      v.object({ type: v.literal('all') }),
     ),
   },
   handler: async (ctx, args) => {
     // Get all game days for this group
     const allGameDays = await ctx.db
-      .query("gameDays")
-      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
-      .collect();
+      .query('gameDays')
+      .withIndex('by_group', (q) => q.eq('groupId', args.groupId))
+      .collect()
 
     // Filter by period
-    const today = new Date();
+    const today = new Date()
     const filteredGameDays = allGameDays.filter((gd) => {
-      const gdDate = new Date(gd.date);
+      const gdDate = new Date(gd.date)
 
       switch (args.period.type) {
-        case "date":
-          return gd.date === args.period.date;
-        case "days": {
-          const daysAgo = new Date(today);
-          daysAgo.setDate(daysAgo.getDate() - args.period.days + 1);
-          daysAgo.setHours(0, 0, 0, 0);
-          return gdDate >= daysAgo;
+        case 'date':
+          return gd.date === args.period.date
+        case 'days': {
+          const daysAgo = new Date(today)
+          daysAgo.setDate(daysAgo.getDate() - args.period.days + 1)
+          daysAgo.setHours(0, 0, 0, 0)
+          return gdDate >= daysAgo
         }
-        case "month":
-          return (
-            gdDate.getFullYear() === args.period.year &&
-            gdDate.getMonth() + 1 === args.period.month
-          );
-        case "all":
-          return true;
+        case 'month':
+          return gdDate.getFullYear() === args.period.year && gdDate.getMonth() + 1 === args.period.month
+        case 'all':
+          return true
       }
-    });
+    })
 
     // Get all games for filtered game days
     const allGames = await Promise.all(
       filteredGameDays.map((gd) =>
         ctx.db
-          .query("games")
-          .withIndex("by_game_day", (q) => q.eq("gameDayId", gd._id))
-          .collect()
-      )
-    );
-    const games = allGames.flat();
+          .query('games')
+          .withIndex('by_game_day', (q) => q.eq('gameDayId', gd._id))
+          .collect(),
+      ),
+    )
+    const games = allGames.flat()
 
     // Get all players in the group
     const players = await ctx.db
-      .query("players")
-      .withIndex("by_group", (q) => q.eq("groupId", args.groupId))
-      .collect();
+      .query('players')
+      .withIndex('by_group', (q) => q.eq('groupId', args.groupId))
+      .collect()
 
     // Calculate stats for each player
     const stats = players.map((player) => {
-      let wins = 0;
-      let losses = 0;
-      let pointsFor = 0;
-      let pointsAgainst = 0;
+      let wins = 0
+      let losses = 0
+      let pointsFor = 0
+      let pointsAgainst = 0
 
       for (const game of games) {
-        const inTeam1 = game.team1Ids.includes(player._id);
-        const inTeam2 = game.team2Ids.includes(player._id);
+        const inTeam1 = game.team1Ids.includes(player._id)
+        const inTeam2 = game.team2Ids.includes(player._id)
 
-        if (!inTeam1 && !inTeam2) continue;
+        if (!inTeam1 && !inTeam2) continue
 
         if (inTeam1) {
-          pointsFor += game.team1Score;
-          pointsAgainst += game.team2Score;
-          if (game.team1Score > game.team2Score) wins++;
-          else losses++;
+          pointsFor += game.team1Score
+          pointsAgainst += game.team2Score
+          if (game.team1Score > game.team2Score) wins++
+          else losses++
         } else {
-          pointsFor += game.team2Score;
-          pointsAgainst += game.team1Score;
-          if (game.team2Score > game.team1Score) wins++;
-          else losses++;
+          pointsFor += game.team2Score
+          pointsAgainst += game.team1Score
+          if (game.team2Score > game.team1Score) wins++
+          else losses++
         }
       }
 
-      const gamesPlayed = wins + losses;
-      const winPercentage = gamesPlayed > 0 ? (wins / gamesPlayed) * 100 : 0;
-      const adjustedWinPercentage = calculateAdjustedWinPercentage(wins, gamesPlayed);
-      const plusMinus = pointsFor - pointsAgainst;
+      const gamesPlayed = wins + losses
+      const winPercentage = gamesPlayed > 0 ? (wins / gamesPlayed) * 100 : 0
+      const adjustedWinPercentage = calculateAdjustedWinPercentage(wins, gamesPlayed)
+      const plusMinus = pointsFor - pointsAgainst
 
       return {
         player,
@@ -171,61 +168,57 @@ export const getStats = query({
         winPercentage,
         adjustedWinPercentage,
         plusMinus,
-      };
-    });
+      }
+    })
 
     // Sort by adjusted win percentage descending (accounts for sample size)
-    return stats
-      .filter((s) => s.gamesPlayed > 0)
-      .sort((a, b) => b.adjustedWinPercentage - a.adjustedWinPercentage);
+    return stats.filter((s) => s.gamesPlayed > 0).sort((a, b) => b.adjustedWinPercentage - a.adjustedWinPercentage)
   },
-});
+})
 
 // Stats for a specific game day (for summary)
 export const getGameDayStats = query({
-  args: { gameDayId: v.id("gameDays") },
+  args: { gameDayId: v.id('gameDays') },
   handler: async (ctx, args) => {
-    const gameDay = await ctx.db.get(args.gameDayId);
-    if (!gameDay) return null;
+    const gameDay = await ctx.db.get(args.gameDayId)
+    if (!gameDay) return null
 
     const games = await ctx.db
-      .query("games")
-      .withIndex("by_game_day", (q) => q.eq("gameDayId", args.gameDayId))
-      .collect();
+      .query('games')
+      .withIndex('by_game_day', (q) => q.eq('gameDayId', args.gameDayId))
+      .collect()
 
-    const group = await ctx.db.get(gameDay.groupId);
+    const group = await ctx.db.get(gameDay.groupId)
 
     // Get attendee details
-    const attendees = await Promise.all(
-      gameDay.attendeeIds.map((id) => ctx.db.get(id))
-    );
-    const players = attendees.filter(Boolean);
+    const attendees = await Promise.all(gameDay.attendeeIds.map((id) => ctx.db.get(id)))
+    const players = attendees.filter(Boolean)
 
     // Calculate stats for each player
     const stats = players.map((player) => {
-      if (!player) return null;
+      if (!player) return null
 
-      let wins = 0;
-      let losses = 0;
+      let wins = 0
+      let losses = 0
 
       for (const game of games) {
-        const inTeam1 = game.team1Ids.includes(player._id);
-        const inTeam2 = game.team2Ids.includes(player._id);
+        const inTeam1 = game.team1Ids.includes(player._id)
+        const inTeam2 = game.team2Ids.includes(player._id)
 
-        if (!inTeam1 && !inTeam2) continue;
+        if (!inTeam1 && !inTeam2) continue
 
         if (inTeam1) {
-          if (game.team1Score > game.team2Score) wins++;
-          else losses++;
+          if (game.team1Score > game.team2Score) wins++
+          else losses++
         } else {
-          if (game.team2Score > game.team1Score) wins++;
-          else losses++;
+          if (game.team2Score > game.team1Score) wins++
+          else losses++
         }
       }
 
-      const gamesPlayed = wins + losses;
-      const winPercentage = gamesPlayed > 0 ? (wins / gamesPlayed) * 100 : 0;
-      const adjustedWinPercentage = calculateAdjustedWinPercentage(wins, gamesPlayed);
+      const gamesPlayed = wins + losses
+      const winPercentage = gamesPlayed > 0 ? (wins / gamesPlayed) * 100 : 0
+      const adjustedWinPercentage = calculateAdjustedWinPercentage(wins, gamesPlayed)
 
       return {
         player,
@@ -234,15 +227,15 @@ export const getGameDayStats = query({
         gamesPlayed,
         winPercentage,
         adjustedWinPercentage,
-      };
-    });
+      }
+    })
 
-    const validStats = stats.filter(Boolean).filter((s) => s!.gamesPlayed > 0);
-    validStats.sort((a, b) => b!.adjustedWinPercentage - a!.adjustedWinPercentage);
+    const validStats = stats.filter(Boolean).filter((s) => s!.gamesPlayed > 0)
+    validStats.sort((a, b) => b!.adjustedWinPercentage - a!.adjustedWinPercentage)
 
     // Find MVP (highest adjusted win % with min 2 games)
-    const mvpCandidates = validStats.filter((s) => s!.gamesPlayed >= 2);
-    const mvp = mvpCandidates[0] ?? null;
+    const mvpCandidates = validStats.filter((s) => s!.gamesPlayed >= 2)
+    const mvp = mvpCandidates[0] ?? null
 
     return {
       gameDay,
@@ -251,6 +244,6 @@ export const getGameDayStats = query({
       stats: validStats,
       mvp,
       totalGames: games.length,
-    };
+    }
   },
-});
+})

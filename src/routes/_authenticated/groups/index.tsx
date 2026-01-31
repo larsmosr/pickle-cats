@@ -120,25 +120,27 @@ function GroupsListPage() {
           </Button>
         </DrawerTrigger>
         <DrawerContent>
-          <DrawerHeader>
-            <DrawerTitle>Create New Group</DrawerTitle>
-          </DrawerHeader>
-          <div className="p-4">
-            <Input
-              placeholder="Group name"
-              value={newGroupName}
-              onChange={(e) => setNewGroupName(e.target.value)}
-              autoFocus
-            />
+          <div className="mx-auto w-full max-w-sm">
+            <DrawerHeader>
+              <DrawerTitle>Create New Group</DrawerTitle>
+            </DrawerHeader>
+            <div className="p-4">
+              <Input
+                placeholder="Group name"
+                value={newGroupName}
+                onChange={(e) => setNewGroupName(e.target.value)}
+                autoFocus
+              />
+            </div>
+            <DrawerFooter>
+              <Button onClick={handleCreate} disabled={!newGroupName.trim() || isCreating}>
+                {isCreating ? 'Creating...' : 'Create'}
+              </Button>
+              <DrawerClose asChild>
+                <Button variant="outline">Cancel</Button>
+              </DrawerClose>
+            </DrawerFooter>
           </div>
-          <DrawerFooter>
-            <Button onClick={handleCreate} disabled={!newGroupName.trim() || isCreating}>
-              {isCreating ? 'Creating...' : 'Create'}
-            </Button>
-            <DrawerClose asChild>
-              <Button variant="outline">Cancel</Button>
-            </DrawerClose>
-          </DrawerFooter>
         </DrawerContent>
       </Drawer>
     </div>

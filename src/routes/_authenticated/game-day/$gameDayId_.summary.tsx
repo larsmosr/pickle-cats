@@ -132,7 +132,7 @@ function SummaryPage() {
           {/* Inner wrapper to keep content together */}
           <div style={{ width: '100%' }}>
             {/* Header */}
-            <div style={{ textAlign: 'center', marginBottom: '16px' }}>
+            <div style={{ textAlign: 'center', marginBottom: '8px' }}>
               <img
                 src="/app-logo.png"
                 alt="Pickle Cats"
@@ -153,19 +153,31 @@ function SummaryPage() {
                 padding: '12px 0',
                 borderTop: '1px solid rgba(92, 84, 112, 0.15)',
                 borderBottom: '1px solid rgba(92, 84, 112, 0.15)',
-                marginBottom: '16px',
+                marginBottom: '8px',
               }}
             >
               <p style={{ fontSize: '28px', fontWeight: 700, color: '#1a1a1a' }}>{data.totalGames} Games Played</p>
             </div>
 
             {/* Leaderboard */}
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {data.stats
-                .filter((stat): stat is NonNullable<typeof stat> => stat !== null)
-                .slice(0, 10)
-                .map((stat, index) => {
-                  const isMvp = index === 0 && data.mvp
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {(() => {
+                const filteredStats = data.stats.filter((stat): stat is NonNullable<typeof stat> => stat !== null)
+                const topScore = filteredStats[0]?.adjustedWinPercentage ?? 0
+
+                // Calculate ranks with ties based on adjustedWinPercentage
+                let currentRank = 1
+                let prevScore: number | null = null
+                const rankedStats = filteredStats.slice(0, 10).map((stat, index) => {
+                  if (prevScore !== null && stat.adjustedWinPercentage < prevScore) {
+                    currentRank = index + 1
+                  }
+                  prevScore = stat.adjustedWinPercentage
+                  return { ...stat, rank: currentRank }
+                })
+
+                return rankedStats.map((stat) => {
+                  const isMvp = stat.adjustedWinPercentage === topScore && data.mvp
                   return (
                     <div
                       key={stat.player._id}
@@ -173,13 +185,13 @@ function SummaryPage() {
                         display: 'flex',
                         alignItems: 'center',
                         gap: '12px',
-                        padding: '12px 16px',
+                        padding: '8px 12px',
                         borderRadius: '16px',
                         background: 'rgba(255, 255, 255, 0.6)',
                       }}
                     >
                       <span style={{ width: '28px', textAlign: 'center', fontWeight: 700, color: '#7a7490' }}>
-                        {index + 1}.
+                        {stat.rank}.
                       </span>
                       <Avatar size="sm">
                         <AvatarImage src={stat.player.avatarUrl} />
@@ -197,41 +209,48 @@ function SummaryPage() {
                       >
                         {stat.player.name}
                         {isMvp && (
-                          <>
-                            <svg
-                              style={{ width: '14px', height: '14px', color: '#eab308', fill: '#eab308' }}
-                              viewBox="0 0 24 24"
-                              xmlns="http://www.w3.org/2000/svg"
-                            >
-                              <path
-                                d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"
-                                fill="currentColor"
-                              />
-                            </svg>
-                            <span
-                              style={{
-                                fontSize: '10px',
-                                fontWeight: 600,
-                                color: '#ca8a04',
-                                background: '#fef9c3',
-                                padding: '2px 6px',
-                                borderRadius: '8px',
-                              }}
-                            >
-                              MVP
-                            </span>
-                          </>
+                          <span
+                            style={{
+                              fontSize: '10px',
+                              fontWeight: 600,
+                              color: '#ca8a04',
+                              background: '#fef9c3',
+                              padding: '2px 6px',
+                              borderRadius: '8px',
+                            }}
+                          >
+                            MVP
+                          </span>
                         )}
                       </span>
-                      <span style={{ fontSize: '14px', color: '#5c5470' }}>
+                      <span
+                        style={{
+                          fontSize: '18px',
+                          fontWeight: 600,
+                          color: '#5c5470',
+                          minWidth: '28px',
+                          textAlign: 'center',
+                        }}
+                      >
+                        {stat.adjustedWinPercentage.toFixed(0)}
+                      </span>
+                      <span style={{ fontSize: '14px', color: '#7a7490' }}>
                         {stat.wins}-{stat.losses}
                       </span>
-                      <span style={{ fontSize: '14px', color: '#7a7490', width: '48px', textAlign: 'right' }}>
+                      <span style={{ fontSize: '14px', color: '#7a7490', minWidth: '36px', textAlign: 'right' }}>
                         {stat.winPercentage.toFixed(0)}%
                       </span>
                     </div>
                   )
-                })}
+                })
+              })()}
+            </div>
+
+            {/* Leaderboard Legend */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+              <span style={{ fontSize: '12px', color: '#7a7490' }}>
+                Score = Bayesian Inference (ratings adjustment algorithm)
+              </span>
             </div>
           </div>
         </div>
