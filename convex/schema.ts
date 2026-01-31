@@ -19,6 +19,7 @@ export default defineSchema({
     date: v.string(),
     attendeeIds: v.array(v.id("players")),
     isComplete: v.boolean(),
+    mode: v.union(v.literal("auto_rotation"), v.literal("open_play")),
     createdAt: v.number(),
   })
     .index("by_group", ["groupId"])
