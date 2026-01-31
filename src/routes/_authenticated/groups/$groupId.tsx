@@ -370,7 +370,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
   function handleOpenDrawer() {
     setStep('date')
     setSelectedDate(new Date())
-    setSelectedAttendees([])
+    setSelectedAttendees(players.map((p) => p._id))
     setSelectedMode('auto_rotation')
     setIsOpen(true)
   }
@@ -481,7 +481,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
                     key={player._id}
                     type="button"
                     className={cn(
-                      'flex items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors',
+                      'flex w-full items-center gap-3 p-3 rounded-xl cursor-pointer transition-colors',
                       selectedAttendees.includes(player._id)
                         ? 'bg-primary/10 ring-2 ring-primary'
                         : 'bg-card ring-1 ring-foreground/10 hover:bg-muted/50',
