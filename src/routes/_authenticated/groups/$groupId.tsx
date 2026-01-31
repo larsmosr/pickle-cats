@@ -2,10 +2,23 @@
 import { convexQuery } from '@convex-dev/react-query'
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { useMutation, useQuery } from 'convex/react'
+import { fallback, zodSearchValidator } from '@tanstack/router-zod-adapter'
+import { useMutation } from 'convex/react'
 import { format } from 'date-fns'
-import { ArrowDown, ArrowLeft, ArrowUpDown, CalendarIcon, Plus, RefreshCw, Trash2, Users } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowLeft,
+  ArrowUp,
+  ArrowUpDown,
+  CalendarIcon,
+  Crown,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Users,
+} from 'lucide-react'
 import { useState } from 'react'
+import { z } from 'zod'
 import { DecorativeBackground } from '@/components/decorative-background'
 import { PlayerCard } from '@/components/player-card'
 import {
@@ -42,12 +55,34 @@ import { cn } from '@/lib/utils'
 import { api } from '../../../../convex/_generated/api'
 import type { Id } from '../../../../convex/_generated/dataModel'
 
+const statsPeriodSchema = z.discriminatedUnion('type', [
+  z.object({ type: z.literal('date'), date: z.string() }),
+  z.object({ type: z.literal('days'), days: z.number() }),
+  z.object({ type: z.literal('month'), year: z.number(), month: z.number() }),
+  z.object({ type: z.literal('all') }),
+])
+
+const searchSchema = z.object({
+  tab: fallback(z.enum(['game-days', 'players', 'stats']), 'game-days').default('game-days'),
+  period: fallback(statsPeriodSchema, { type: 'all' }).default({ type: 'all' }),
+  sortBy: fallback(
+    z.enum(['adjustedWinPercentage', 'winPercentage', 'wins', 'losses', 'gamesPlayed', 'plusMinus']),
+    'adjustedWinPercentage',
+  ).default('adjustedWinPercentage'),
+  sortDir: fallback(z.enum(['asc', 'desc']), 'desc').default('desc'),
+})
+
+type SearchParams = z.infer<typeof searchSchema>
+
 export const Route = createFileRoute('/_authenticated/groups/$groupId')({
-  loader: async ({ context: { queryClient }, params: { groupId } }) => {
+  validateSearch: zodSearchValidator(searchSchema),
+  loaderDeps: ({ search }) => ({ period: search.period }),
+  loader: async ({ context: { queryClient }, params: { groupId }, deps: { period } }) => {
     await Promise.all([
       queryClient.ensureQueryData(convexQuery(api.groups.get, { id: groupId as Id<'groups'> })),
       queryClient.ensureQueryData(convexQuery(api.players.listByGroup, { groupId: groupId as Id<'groups'> })),
       queryClient.ensureQueryData(convexQuery(api.gameDays.listByGroup, { groupId: groupId as Id<'groups'> })),
+      queryClient.ensureQueryData(convexQuery(api.games.getStats, { groupId: groupId as Id<'groups'>, period })),
     ])
   },
   head: () => ({
@@ -63,8 +98,18 @@ export const Route = createFileRoute('/_authenticated/groups/$groupId')({
 
 function GroupHubPage() {
   const { groupId } = Route.useParams()
+  const search = Route.useSearch()
+  const navigate = useNavigate({ from: Route.fullPath })
   const { data: group } = useSuspenseQuery(convexQuery(api.groups.get, { id: groupId as Id<'groups'> }))
-  const [activeTab, setActiveTab] = useState('game-days')
+
+  function setActiveTab(newTab: string) {
+    if (newTab === 'stats') {
+      navigate({ search: { ...search, tab: newTab } })
+    } else {
+      // Clear stats-specific params when leaving stats tab
+      navigate({ search: { tab: newTab as SearchParams['tab'] } })
+    }
+  }
 
   if (group === null) {
     return (
@@ -87,7 +132,7 @@ function GroupHubPage() {
         <h2 className="text-lg font-semibold flex-1">{group.name}</h2>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col relative z-10">
+      <Tabs value={search.tab} onValueChange={setActiveTab} className="flex-1 flex flex-col relative z-10">
         <TabsList className="mx-4 mt-4 w-fit bg-card/80 backdrop-blur-sm shadow-sm">
           <TabsTrigger value="game-days">Game Days</TabsTrigger>
           <TabsTrigger value="players">Players</TabsTrigger>
@@ -314,9 +359,10 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
   const navigate = useNavigate()
 
   const [isOpen, setIsOpen] = useState(false)
-  const [step, setStep] = useState<'date' | 'attendees'>('date')
+  const [step, setStep] = useState<'date' | 'attendees' | 'mode'>('date')
   const [selectedDate, setSelectedDate] = useState<Date>(new Date())
   const [selectedAttendees, setSelectedAttendees] = useState<Id<'players'>[]>([])
+  const [selectedMode, setSelectedMode] = useState<'auto_rotation' | 'open_play'>('auto_rotation')
   const [isCreating, setIsCreating] = useState(false)
 
   const hasEnoughPlayers = players.length >= 2
@@ -325,6 +371,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
     setStep('date')
     setSelectedDate(new Date())
     setSelectedAttendees([])
+    setSelectedMode('auto_rotation')
     setIsOpen(true)
   }
 
@@ -342,6 +389,7 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
         groupId,
         date: format(selectedDate, 'yyyy-MM-dd'),
         attendeeIds: selectedAttendees,
+        mode: selectedMode,
       })
       setIsOpen(false)
       navigate({ to: '/game-day/$gameDayId', params: { gameDayId: id } })
@@ -415,14 +463,18 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
         <DrawerContent className="max-h-[85vh]">
           <div className="mx-auto w-full max-w-sm">
             <DrawerHeader>
-              <DrawerTitle>{step === 'date' ? 'Select Date' : "Who's Playing?"}</DrawerTitle>
+              <DrawerTitle>
+                {step === 'date' ? 'Select Date' : step === 'attendees' ? "Who's Playing?" : 'Game Mode'}
+              </DrawerTitle>
             </DrawerHeader>
 
-            {step === 'date' ? (
+            {step === 'date' && (
               <div className="p-4 flex justify-center">
                 <Calendar mode="single" selected={selectedDate} onSelect={(date) => date && setSelectedDate(date)} />
               </div>
-            ) : (
+            )}
+
+            {step === 'attendees' && (
               <div className="p-4 space-y-2 overflow-y-auto max-h-[50vh]">
                 {players?.map((player) => (
                   <div
@@ -449,15 +501,53 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
               </div>
             )}
 
+            {step === 'mode' && (
+              <div className="p-4 space-y-3">
+                <div
+                  className={cn(
+                    'p-4 rounded-xl cursor-pointer transition-colors border-2',
+                    selectedMode === 'auto_rotation'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-primary/50',
+                  )}
+                  onClick={() => setSelectedMode('auto_rotation')}
+                >
+                  <div className="font-medium">Auto Rotation</div>
+                  <div className="text-sm text-muted-foreground">Algorithm picks balanced matchups</div>
+                </div>
+                <div
+                  className={cn(
+                    'p-4 rounded-xl cursor-pointer transition-colors border-2',
+                    selectedMode === 'open_play'
+                      ? 'border-primary bg-primary/10'
+                      : 'border-border hover:border-primary/50',
+                  )}
+                  onClick={() => setSelectedMode('open_play')}
+                >
+                  <div className="font-medium">Open Play</div>
+                  <div className="text-sm text-muted-foreground">Log games freely as they happen</div>
+                </div>
+              </div>
+            )}
+
             <DrawerFooter>
               {step === 'date' ? (
                 <Button onClick={() => setStep('attendees')}>Next: Select Players</Button>
-              ) : (
+              ) : step === 'attendees' ? (
                 <>
-                  <Button onClick={handleCreate} disabled={selectedAttendees.length < 2 || isCreating}>
-                    {isCreating ? 'Starting...' : `Start with ${selectedAttendees.length} Players`}
+                  <Button onClick={() => setStep('mode')} disabled={selectedAttendees.length < 2}>
+                    Next: Choose Mode
                   </Button>
                   <Button variant="outline" onClick={() => setStep('date')}>
+                    Back
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <Button onClick={handleCreate} disabled={isCreating}>
+                    {isCreating ? 'Starting...' : 'Start Game Day'}
+                  </Button>
+                  <Button variant="outline" onClick={() => setStep('attendees')}>
                     Back
                   </Button>
                 </>
@@ -473,38 +563,45 @@ function GameDaysTab({ groupId, onNavigateToPlayers }: { groupId: Id<'groups'>; 
   )
 }
 
-type StatsPeriod =
-  | { type: 'date'; date: string }
-  | { type: 'days'; days: number }
-  | { type: 'month'; year: number; month: number }
-  | { type: 'all' }
-
 function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
-  const today = new Date()
-  const [period, setPeriod] = useState<StatsPeriod>({
-    type: 'date',
-    date: format(today, 'yyyy-MM-dd'),
-  })
-  const [selectedDate, setSelectedDate] = useState<Date>(today)
-  const [sortBy, setSortBy] = useState<'winPercentage' | 'wins' | 'losses' | 'gamesPlayed' | 'plusMinus'>(
-    'winPercentage',
-  )
+  const search = Route.useSearch()
+  const { period, sortBy, sortDir } = search
+  const navigate = useNavigate({ from: Route.fullPath })
 
-  const stats = useQuery(api.games.getStats, { groupId, period })
+  const { data: stats } = useSuspenseQuery(convexQuery(api.games.getStats, { groupId, period }))
+
+  // For date picker: extract selected date from period if it's a date type
+  const selectedDate = period.type === 'date' ? new Date(period.date) : new Date()
+
+  function updateSearch(updates: Partial<SearchParams>) {
+    navigate({ search: { ...search, ...updates } })
+  }
 
   function handleDateSelect(date: Date | undefined) {
     if (date) {
-      setSelectedDate(date)
-      setPeriod({ type: 'date', date: format(date, 'yyyy-MM-dd') })
+      updateSearch({ period: { type: 'date', date: format(date, 'yyyy-MM-dd') } })
     }
   }
 
-  const sortedStats = stats
-    ? [...stats].sort((a, b) => {
-        if (sortBy === 'losses') return b.losses - a.losses
-        return b[sortBy] - a[sortBy]
-      })
-    : []
+  function handleSort(column: SearchParams['sortBy']) {
+    if (sortBy === column) {
+      updateSearch({ sortDir: sortDir === 'desc' ? 'asc' : 'desc' })
+    } else {
+      updateSearch({ sortBy: column, sortDir: 'desc' })
+    }
+  }
+
+  const sortedStats = [...stats].sort((a, b) => {
+    const multiplier = sortDir === 'desc' ? 1 : -1
+    const key = sortBy as keyof typeof a
+    return multiplier * ((b[key] as number) - (a[key] as number))
+  })
+
+  // Find the player with highest Score (Bayesian ranking) - they get the crown
+  const topScorerId = stats?.reduce((topId, stat) => {
+    const top = stats.find((s) => s.player._id === topId)
+    return !top || stat.adjustedWinPercentage > top.adjustedWinPercentage ? stat.player._id : topId
+  }, stats[0]?.player._id)
 
   return (
     <div className="space-y-4">
@@ -525,81 +622,124 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
         <Button
           variant={period.type === 'days' && period.days === 7 ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setPeriod({ type: 'days', days: 7 })}
+          onClick={() => updateSearch({ period: { type: 'days', days: 7 } })}
         >
           7 Days
         </Button>
         <Button
           variant={period.type === 'days' && period.days === 30 ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setPeriod({ type: 'days', days: 30 })}
+          onClick={() => updateSearch({ period: { type: 'days', days: 30 } })}
         >
           30 Days
         </Button>
         <Button
           variant={period.type === 'all' ? 'default' : 'outline'}
           size="sm"
-          onClick={() => setPeriod({ type: 'all' })}
+          onClick={() => updateSearch({ period: { type: 'all' } })}
         >
           All Time
         </Button>
       </div>
 
-      {stats === undefined ? (
-        <p className="text-muted-foreground text-center py-8">Loading...</p>
-      ) : sortedStats.length === 0 ? (
+      {sortedStats.length === 0 ? (
         <p className="text-muted-foreground text-center py-8">No games in this period</p>
       ) : (
-        <Table className="table-fixed">
+        <Table>
           <TableHeader>
             <TableRow>
               <TableHead className="w-8 px-2">#</TableHead>
-              <TableHead>Player</TableHead>
-              <TableHead className="text-right w-14 px-1">
+              <TableHead className="pr-4">Player</TableHead>
+              <TableHead className="text-center w-14 px-1">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-1 text-primary"
-                  onClick={() => setSortBy('winPercentage')}
+                  variant={sortBy === 'adjustedWinPercentage' ? 'default' : 'ghost'}
+                  size="xs"
+                  className="h-6 px-1.5"
+                  onClick={() => handleSort('adjustedWinPercentage')}
+                >
+                  Score
+                  {sortBy === 'adjustedWinPercentage' ? (
+                    sortDir === 'desc' ? (
+                      <ArrowDown className="ml-0.5 size-3" />
+                    ) : (
+                      <ArrowUp className="ml-0.5 size-3" />
+                    )
+                  ) : (
+                    <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
+                  )}
+                </Button>
+              </TableHead>
+              <TableHead className="text-center w-14 px-1">
+                <Button
+                  variant={sortBy === 'winPercentage' ? 'default' : 'ghost'}
+                  size="xs"
+                  className="h-6 px-1.5"
+                  onClick={() => handleSort('winPercentage')}
                 >
                   W%
                   {sortBy === 'winPercentage' ? (
-                    <ArrowDown className="ml-0.5 size-3" />
+                    sortDir === 'desc' ? (
+                      <ArrowDown className="ml-0.5 size-3" />
+                    ) : (
+                      <ArrowUp className="ml-0.5 size-3" />
+                    )
                   ) : (
                     <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="text-right w-12 px-1">
-                <Button variant="ghost" size="sm" className="h-8 px-1 text-primary" onClick={() => setSortBy('wins')}>
+              <TableHead className="text-center w-12 px-1">
+                <Button
+                  variant={sortBy === 'wins' ? 'default' : 'ghost'}
+                  size="xs"
+                  className="h-6 px-1.5"
+                  onClick={() => handleSort('wins')}
+                >
                   W
                   {sortBy === 'wins' ? (
-                    <ArrowDown className="ml-0.5 size-3" />
+                    sortDir === 'desc' ? (
+                      <ArrowDown className="ml-0.5 size-3" />
+                    ) : (
+                      <ArrowUp className="ml-0.5 size-3" />
+                    )
                   ) : (
                     <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="text-right w-12 px-1">
-                <Button variant="ghost" size="sm" className="h-8 px-1 text-primary" onClick={() => setSortBy('losses')}>
+              <TableHead className="text-center w-12 px-1">
+                <Button
+                  variant={sortBy === 'losses' ? 'default' : 'ghost'}
+                  size="xs"
+                  className="h-6 px-1.5"
+                  onClick={() => handleSort('losses')}
+                >
                   L
                   {sortBy === 'losses' ? (
-                    <ArrowDown className="ml-0.5 size-3" />
+                    sortDir === 'desc' ? (
+                      <ArrowDown className="ml-0.5 size-3" />
+                    ) : (
+                      <ArrowUp className="ml-0.5 size-3" />
+                    )
                   ) : (
                     <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
                   )}
                 </Button>
               </TableHead>
-              <TableHead className="text-right w-12 px-1">
+              <TableHead className="text-center w-12 px-1">
                 <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-8 px-1 text-primary"
-                  onClick={() => setSortBy('plusMinus')}
+                  variant={sortBy === 'plusMinus' ? 'default' : 'ghost'}
+                  size="xs"
+                  className="h-6 px-1.5"
+                  onClick={() => handleSort('plusMinus')}
                 >
                   +/-
                   {sortBy === 'plusMinus' ? (
-                    <ArrowDown className="ml-0.5 size-3" />
+                    sortDir === 'desc' ? (
+                      <ArrowDown className="ml-0.5 size-3" />
+                    ) : (
+                      <ArrowUp className="ml-0.5 size-3" />
+                    )
                   ) : (
                     <ArrowUpDown className="ml-0.5 size-3 opacity-50" />
                   )}
@@ -611,19 +751,25 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
             {sortedStats.map((stat, index) => (
               <TableRow key={stat.player._id}>
                 <TableCell className="font-medium px-2 w-8">{index + 1}</TableCell>
-                <TableCell className="overflow-hidden max-w-[100px]">
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Avatar size="sm" className="shrink-0">
-                      <AvatarImage src={stat.player.avatarUrl} />
-                      <AvatarFallback>{stat.player.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <span className="truncate max-w-[70px]">{stat.player.name}</span>
+                <TableCell className="pr-4">
+                  <div className="flex items-center gap-2">
+                    <div className="relative shrink-0">
+                      <Avatar size="sm">
+                        <AvatarImage src={stat.player.avatarUrl} />
+                        <AvatarFallback>{stat.player.name.charAt(0)}</AvatarFallback>
+                      </Avatar>
+                      {stat.player._id === topScorerId && (
+                        <Crown className="absolute rotate-27 -top-3.5 -right-1.5 size-5 text-yellow-500 fill-yellow-500" />
+                      )}
+                    </div>
+                    <span>{stat.player.name}</span>
                   </div>
                 </TableCell>
-                <TableCell className="text-right px-1">{stat.winPercentage.toFixed(0)}%</TableCell>
-                <TableCell className="text-right px-1">{stat.wins}</TableCell>
-                <TableCell className="text-right px-1">{stat.losses}</TableCell>
-                <TableCell className="text-right px-1">
+                <TableCell className="text-center px-1">{stat.adjustedWinPercentage.toFixed(0)}</TableCell>
+                <TableCell className="text-center px-1">{stat.winPercentage.toFixed(0)}%</TableCell>
+                <TableCell className="text-center px-1">{stat.wins}</TableCell>
+                <TableCell className="text-center px-1">{stat.losses}</TableCell>
+                <TableCell className="text-center px-1">
                   {stat.plusMinus > 0 ? '+' : ''}
                   {stat.plusMinus}
                 </TableCell>
@@ -631,6 +777,14 @@ function StatsTab({ groupId }: { groupId: Id<'groups'> }) {
             ))}
           </TableBody>
         </Table>
+      )}
+
+      {sortedStats.length > 0 && (
+        <p className="text-xs text-muted-foreground mt-3">
+          <span className="font-bold">Score</span> = Bayesian ranking (accounts for games played) •{' '}
+          <span className="font-bold">W%</span> = Win rate • <span className="font-bold">W</span> = Wins •{' '}
+          <span className="font-bold">L</span> = Losses • <span className="font-bold">+/-</span> = Point differential
+        </p>
       )}
     </div>
   )
