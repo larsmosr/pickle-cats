@@ -60,8 +60,6 @@ function buildGameHistory(games: Game[]): GameHistory {
 }
 
 function updateSitoutTracking(history: GameHistory, playing: Player[], sittingOut: Player[]): void {
-  const playingIds = new Set(playing.map((p) => p._id))
-
   for (const player of sittingOut) {
     const current = history.consecutiveSitouts.get(player._id) ?? 0
     history.consecutiveSitouts.set(player._id, current + 1)
@@ -72,8 +70,26 @@ function updateSitoutTracking(history: GameHistory, playing: Player[], sittingOu
   }
 }
 
-function scoreMatchup(team1: Player[], team2: Player[], history: GameHistory): number {
+function scoreMatchup(team1: Player[], team2: Player[], history: GameHistory, lastGame: Game | null): number {
   let score = 0
+
+  // Heavily penalize repeating the exact same partnership from last game
+  if (lastGame && team1.length === 2) {
+    const key = getPairKey(team1[0]._id, team1[1]._id)
+    const lastTeam1Key = lastGame.team1Ids.length === 2 ? getPairKey(lastGame.team1Ids[0], lastGame.team1Ids[1]) : null
+    const lastTeam2Key = lastGame.team2Ids.length === 2 ? getPairKey(lastGame.team2Ids[0], lastGame.team2Ids[1]) : null
+    if (key === lastTeam1Key || key === lastTeam2Key) {
+      score -= 50 // Strong penalty for consecutive same partnership
+    }
+  }
+  if (lastGame && team2.length === 2) {
+    const key = getPairKey(team2[0]._id, team2[1]._id)
+    const lastTeam1Key = lastGame.team1Ids.length === 2 ? getPairKey(lastGame.team1Ids[0], lastGame.team1Ids[1]) : null
+    const lastTeam2Key = lastGame.team2Ids.length === 2 ? getPairKey(lastGame.team2Ids[0], lastGame.team2Ids[1]) : null
+    if (key === lastTeam1Key || key === lastTeam2Key) {
+      score -= 50 // Strong penalty for consecutive same partnership
+    }
+  }
 
   // Penalize repeated partnerships (doubles only)
   if (team1.length === 2) {
@@ -134,10 +150,10 @@ export function generateMatchup(
   lockedPlayers: Id<'players'>[] = [],
 ): MatchupResult {
   const history = buildGameHistory(games)
+  const lastGame = games.length > 0 ? games[games.length - 1] : null
 
   // Update consecutive sitouts based on last game
-  if (games.length > 0) {
-    const lastGame = games[games.length - 1]
+  if (lastGame) {
     const lastPlaying = [...lastGame.team1Ids, ...lastGame.team2Ids]
     const lastSittingOut = attendees.filter((p) => !lastPlaying.includes(p._id))
     updateSitoutTracking(
@@ -186,7 +202,7 @@ export function generateMatchup(
     for (const team1 of combinations(selectedPlayers, teamSize)) {
       const team2 = selectedPlayers.filter((p) => !team1.some((t) => t._id === p._id))
 
-      const score = scoreMatchup(team1, team2, history)
+      const score = scoreMatchup(team1, team2, history, lastGame)
       if (score > bestScore) {
         bestScore = score
         bestMatchup = { team1, team2, sittingOut }

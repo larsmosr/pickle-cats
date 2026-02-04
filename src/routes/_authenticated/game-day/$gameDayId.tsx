@@ -717,16 +717,6 @@ function ActiveGameDayPage() {
               {matchup?.sittingOut.map((player) => (
                 <PlayerCard key={player._id} player={player} onClick={() => handleSwapSelect(player)} />
               ))}
-              {matchup?.team1
-                .filter((p) => p._id !== playerToSwap?._id)
-                .map((player) => (
-                  <PlayerCard key={player._id} player={player} onClick={() => handleSwapSelect(player)} />
-                ))}
-              {matchup?.team2
-                .filter((p) => p._id !== playerToSwap?._id)
-                .map((player) => (
-                  <PlayerCard key={player._id} player={player} onClick={() => handleSwapSelect(player)} />
-                ))}
             </div>
             <DrawerFooter>
               <DrawerClose asChild>
