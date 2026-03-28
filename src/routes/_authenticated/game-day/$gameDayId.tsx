@@ -121,7 +121,7 @@ function ActiveGameDayPage() {
   function handleSwapSelect(newPlayer: Player) {
     if (!playerToSwap || !matchup) return
 
-    const result = swapPlayer(matchup, playerToSwap._id, newPlayer._id, attendees, games, isDoubles)
+    const result = swapPlayer(matchup, playerToSwap._id, newPlayer._id, attendees)
     setMatchup(result)
     setSwapDrawerOpen(false)
     setPlayerToSwap(null)

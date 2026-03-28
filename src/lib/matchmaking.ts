@@ -218,8 +218,6 @@ export function swapPlayer(
   playerOut: Id<'players'>,
   playerIn: Id<'players'>,
   attendees: Player[],
-  games: Game[],
-  isDoubles: boolean,
 ): MatchupResult {
   // Find which team the player is in
   const inTeam1 = currentMatchup.team1.some((p) => p._id === playerOut)
@@ -241,9 +239,5 @@ export function swapPlayer(
   const oldPlayer = attendees.find((p) => p._id === playerOut)
   const newSittingOut = currentMatchup.sittingOut.filter((p) => p._id !== playerIn).concat(oldPlayer ? [oldPlayer] : [])
 
-  // Lock the swapped-in player and recalculate best arrangement
-  const lockedPlayers = [playerIn]
-  const allPlaying = [...newTeam1, ...newTeam2]
-
-  return generateMatchup([...allPlaying, ...newSittingOut], games, isDoubles, lockedPlayers)
+  return { team1: newTeam1, team2: newTeam2, sittingOut: newSittingOut }
 }
